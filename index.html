@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<title>Diyet Takip</title>
+<style>
+:root{color-scheme:light dark;--page:#f9f9f7;--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--mut:#898781;--line:#e1e0d9;--axis:#c3c2b7;
+  --acc:#2a78d6;--acc-btn:#256abf;--on-acc:#fff;--soft:#e2edfb;--good:#006300;--bad:#b3261e;--ring:rgba(11,11,11,.10);
+  --shadow:0 1px 2px rgba(11,11,11,.04),0 6px 20px rgba(11,11,11,.05)}
+@media(prefers-color-scheme:dark){:root{--page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--line:#2c2c2a;--axis:#383835;
+  --acc:#3987e5;--acc-btn:#3987e5;--on-acc:#0b0b0b;--soft:#16294a;--good:#0ca30c;--bad:#e66767;--ring:rgba(255,255,255,.10);--shadow:none}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--page);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+header{position:sticky;top:0;z-index:3;background:color-mix(in srgb,var(--page) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:calc(10px + env(safe-area-inset-top)) 16px 8px}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:720px;margin:0 auto}
+h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em;margin:0}
+#sync{font-size:.75rem;color:var(--ink2);min-height:1.1em}
+.pill{border:1px solid var(--ring);background:var(--surface);border-radius:99px;padding:6px 14px;font-size:.85rem;font-weight:600}
+.week{display:flex;gap:4px;max-width:720px;margin:10px auto 0;align-items:stretch}
+.week button{flex:1;border:0;background:none;border-radius:14px;padding:6px 0;display:grid;justify-items:center;gap:1px;min-height:58px}
+.week .arr{flex:0 0 28px;font-size:1.3rem;color:var(--ink2)}
+.week span{font-size:.7rem;color:var(--ink2)}
+.week b{font-size:1.05rem;font-weight:650}
+.week i{width:5px;height:5px;border-radius:50%}
+.week i.dot{background:var(--acc)}
+.week .now b{color:var(--acc-btn)}
+.week .on{background:var(--acc-btn)}
+.week .on span,.week .on b{color:var(--on-acc)}
+.week .on i.dot{background:var(--on-acc)}
+main{max-width:720px;margin:0 auto;padding:8px 16px calc(96px + env(safe-area-inset-bottom))}
+section{background:var(--surface);border:1px solid var(--ring);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+h2{font-size:1.05rem;font-weight:650;margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 small{font-size:.8rem;font-weight:400;color:var(--ink2)}
+p{margin:8px 0 0}
+.mut{color:var(--ink2);font-size:.85rem}
+.hero{display:flex;gap:16px;align-items:center}
+.ringbox{position:relative;flex:0 0 150px;height:150px}
+.ringbox svg{width:150px;height:150px;transform:rotate(-90deg)}
+.ringbox .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ringbox .n{font-size:40px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.ringbox .u{font-size:.8rem;color:var(--ink2);margin-top:4px}
+.stats{flex:1;min-width:0;display:grid;gap:14px}
+.stat .l{font-size:.8rem;color:var(--ink2)}
+.stat .v{font-weight:650;margin-bottom:5px}
+.stat .v small{font-weight:400;color:var(--ink2);font-size:.85rem}
+.meter{height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--acc)}
+.water{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:6px}
+.water button{height:32px;padding:0;border:0;border-radius:4px;background:var(--soft)}
+.water .full{background:var(--acc)}
+.sep{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tiles.two{grid-template-columns:repeat(2,1fr)}
+.tiles label{font-size:.75rem;color:var(--ink2);display:grid;gap:4px;text-align:center}
+.tiles input{width:100%;text-align:center;font-size:1.2rem;font-weight:650;color:var(--ink);background:var(--page);border:1px solid var(--ring);border-radius:12px;padding:10px 4px}
+.tile{background:var(--page);border:1px solid var(--ring);border-radius:14px;padding:12px}
+.tile .l{font-size:.78rem;color:var(--ink2)}
+.tile .v{font-size:1.45rem;font-weight:650;letter-spacing:-.02em}
+.tile .s{font-size:.78rem;color:var(--ink2)}
+.tile .s.good{color:var(--good)}.tile .s.bad{color:var(--bad)}
+.ops{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:2px 16px 6px;scroll-snap-type:x proximity;scrollbar-width:none}
+.ops::-webkit-scrollbar{display:none}
+.op{position:relative;flex:0 0 210px;scroll-snap-align:center;text-align:left;padding:0;overflow:hidden;background:var(--page);border:2px solid var(--line);border-radius:16px}
+.op.sel{border-color:var(--acc)}
+.op img{display:block;width:100%;height:130px;object-fit:cover;background:var(--line)}
+.op .ck{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:var(--acc-btn);color:var(--on-acc);display:none;place-content:center;font-weight:700;box-shadow:0 0 0 2px var(--surface)}
+.op.sel .ck{display:grid}
+.op b,.op span{display:block;padding:0 12px}
+.op b{margin-top:10px;font-weight:650}
+.op .v{font-size:.85rem;margin-top:2px}
+.op .d{font-size:.8rem;color:var(--ink2);margin-top:6px}
+.op .src{font-size:.7rem;color:var(--ink2);padding:8px 12px 10px}
+a{color:inherit}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.field{background:var(--page);border:1px solid var(--ring);border-radius:12px;padding:10px 12px;min-width:0}
+textarea.field{width:100%;resize:vertical;line-height:1.5}
+.btn{border:1px solid var(--ring);background:var(--page);border-radius:12px;padding:10px 14px;font-weight:600}
+.btn.pri{background:var(--acc-btn);color:var(--on-acc);border-color:transparent}
+.btn.big{width:100%;padding:14px;font-size:1.05rem;border-radius:14px;margin-top:14px}
+.btn.done{background:var(--page);color:var(--good);border:1px solid var(--ring)}
+.btn.x{padding:4px 10px;border-radius:99px;font-weight:400}
+ul,ol{margin:0;padding:0;list-style:none}
+.list li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.moves{counter-reset:m;margin-top:12px}
+.moves li{counter-increment:m;display:flex;gap:12px;align-items:baseline;padding:10px 0;border-top:1px solid var(--line)}
+.moves li::before{content:counter(m);flex:0 0 24px;height:24px;border-radius:50%;background:var(--soft);font-size:.75rem;font-weight:650;display:grid;place-content:center}
+.sched li{display:flex;align-items:center;gap:10px;padding:5px 0}
+.sched span{flex:0 0 88px;color:var(--ink2);font-size:.9rem}
+.sched select{flex:1}
+details{border-top:1px solid var(--line);padding:12px 0}
+summary{font-weight:600;cursor:pointer}
+details label{display:grid;gap:4px;font-size:.78rem;color:var(--ink2);margin-top:10px}
+details label>*{color:var(--ink);font-size:1rem}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--ink2);margin-bottom:8px}
+.legend i{display:inline-block;vertical-align:middle;margin-right:6px}
+.chart{position:relative;touch-action:pan-y}
+.chart svg{display:block;width:100%;height:auto}
+.tip{position:absolute;top:6px;width:156px;background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:8px 10px;font-size:.78rem;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums;margin-top:8px}
+th,td{text-align:right;padding:6px 4px;border-top:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink2);font-weight:500}
+pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,monospace;background:var(--page);border:1px solid var(--ring);border-radius:12px;padding:10px;margin:10px 0 0;max-height:220px;overflow:auto}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:3;display:flex;justify-content:center;background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;max-width:160px;border:0;background:none;display:grid;justify-items:center;gap:2px;font-size:.72rem;color:var(--ink2);padding:6px 0;border-radius:12px}
+nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button[aria-current=page]{color:var(--acc-btn);font-weight:650}
+@media(max-width:350px){.ringbox{flex-basis:120px;height:120px}.ringbox svg{width:120px;height:120px}.ringbox .n{font-size:32px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div><h1 id="title"></h1><div id="sync" role="status"></div></div>
+    <button id="today" class="pill" hidden>Bugüne dön</button>
+  </div>
+  <div class="week" id="week"></div>
+</header>
+<main id="app"></main>
+<nav id="tabs" aria-label="Bölümler"></nav>
+<script>
+const BIN = '6af9d32bffd5d16053c35613', API = 'https://api.jsonbin.io/v3/b/' + BIN;
+const C = {kcal: 2000, p: 140, su: 3000, start: '2026-11-15', startKg: 95.85, goal: '2027-05-15', goalKg: 82};
+const TR = 'tr-TR';
+
+const MEALS = [
+  {k: 'kahvalti', ad: 'Kahvaltı', saat: '10:00', ops: [
+    {id: 'k1', ad: 'Klasik kahvaltı', ne: '3 yumurta, 30 g beyaz peynir, 2 dilim tam buğday ekmek, domates-salatalık, 5 zeytin', kcal: 500, p: 30, f: ['0/0e', 'Turkish_breakfast_%2820658662572%29.jpg']},
+    {id: 'k2', ad: 'Menemen', ne: '3 yumurtalı menemen, 30 g peynir, 2 dilim ekmek', kcal: 520, p: 29, f: ['e/e7', 'Turkish_egg_dish_Menemen.jpg']},
+    {id: 'k3', ad: 'Yulaf kâsesi', ne: '60 g yulaf, 250 g süzme yoğurt, 1 muz, tarçın', kcal: 480, p: 31, f: ['1/1f', 'Banana_Oatmeal_Breakfast_Bowl_%2844302857265%29.jpg']},
+    {id: 'k4', ad: 'Omlet ve lor', ne: '3 yumurtalı omlet, 100 g lor, 1 dilim ekmek, yeşillik', kcal: 430, p: 38, f: ['5/50', 'Omelette_on_a_plate.jpg']}]},
+  {k: 'ogle', ad: 'Öğle', saat: '14:00', ops: [
+    {id: 'o1', ad: 'Tavuk ve pilav', ne: '150 g ızgara tavuk, 6 yemek kaşığı pilav, salata, 150 g yoğurt', kcal: 620, p: 55, f: ['d/de', 'Chiken_Steaks_in_Pakistan.jpg']},
+    {id: 'o2', ad: 'Köfte ve makarna', ne: '150 g ızgara köfte, 6 yemek kaşığı makarna, salata, ayran', kcal: 680, p: 45, f: ['2/22', 'Kofte_and_Pilav.jpg']},
+    {id: 'o3', ad: 'Ton balıklı salata', ne: '1 kutu ton (süzülmüş), bol salata, 2 dilim ekmek, 1 yemek kaşığı zeytinyağı, 150 g yoğurt', kcal: 520, p: 42, f: ['c/c8', 'Veggie%2BTuna_salad.jpg']},
+    {id: 'o4', ad: 'Kuru fasulye', ne: '1 porsiyon etli kuru fasulye, 4 yemek kaşığı bulgur, cacık', kcal: 600, p: 35, f: ['3/35', 'Kuru_Fasulye_pilav.jpg']},
+    {id: 'o5', ad: 'Tavuk döner (dışarıda)', ne: 'Porsiyon tavuk döner, yarım pilav, salata, ayran. Dürüm değil.', kcal: 650, p: 45, f: ['a/aa', 'Tavuk_doner.jpg']}]},
+  {k: 'ara', ad: 'Ara öğün', saat: '17:00', ops: [
+    {id: 'a1', ad: 'Elma ve yoğurt', ne: '1 elma, 200 g yoğurt', kcal: 220, p: 8, f: ['6/6f', 'Jazz_apples_with_yoghurt_15-02-2026.jpg']},
+    {id: 'a2', ad: 'Ayran ve muz', ne: '300 ml ayran, 1 muz', kcal: 220, p: 8, f: ['a/a0', 'Ayran_%28large_glass%29.jpg']},
+    {id: 'a3', ad: 'Haşlanmış yumurta', ne: '2 yumurta, salatalık', kcal: 160, p: 13, f: ['a/a4', 'Boiled_Egg_-_Crossection.jpg']},
+    {id: 'a4', ad: 'Süzme yoğurt ve meyve', ne: '200 g süzme yoğurt, 1 avuç çilek ya da başka meyve', kcal: 200, p: 20, f: ['b/b1', 'Strawberries_%26_Yogurt.jpg']}]},
+  {k: 'aksam', ad: 'Akşam', saat: '20:30', ops: [
+    {id: 'x1', ad: 'Tavuk ve çorba', ne: '170 g ızgara tavuk, 1 kâse mercimek çorbası, bol salata', kcal: 560, p: 55, f: ['6/65', 'Mercimek_%C3%A7orbasi.jpg']},
+    {id: 'x2', ad: 'Izgara köfte', ne: '170 g ızgara köfte, 4 yemek kaşığı pilav, bol salata', kcal: 620, p: 42, f: ['d/d2', 'Izgara_k%C3%B6fte.jpg']},
+    {id: 'x3', ad: 'Izgara balık', ne: '180 g ızgara somon ya da levrek, 1 orta haşlanmış patates, salata', kcal: 620, p: 42, f: ['f/fb', 'Grilled_salmon_garnished_with_lemon_and_parsley.jpg']},
+    {id: 'x4', ad: 'Et sote', ne: '170 g et sote ya da bonfile, ızgara sebze, 150 g yoğurt', kcal: 580, p: 50, f: ['2/26', 'Bosphorus_kebab.jpg']},
+    {id: 'x5', ad: 'Tavuk şiş (dışarıda)', ne: 'Porsiyon tavuk şiş, yarım pilav, salata. Ekmek sepeti yok.', kcal: 620, p: 50, f: ['4/4d', '%C5%9Ei%C5%9F_tavuk_%28or_tavuk_%C5%9Fi%C5%9F%29.jpg']}]}
+];
+
+// Varsayılan program; uygulamadan düzenlenince S.plan olarak kaydedilir.
+const DEF_PLAN = {
+  hafta: ['yok', 'ustA', 'altA', 'yok', 'ustB', 'altB', 'kardiyo'], // pazar=0
+  spor: {
+    ustA: {ad: 'Üst A: göğüs ve sırt', h: ['Chest press makine 3x8-12', 'Lat pulldown 3x8-12', 'Incline dumbbell press (avuçlar birbirine bakar) 3x10', 'Seated cable row 3x10', 'Triceps pushdown 3x12', 'Biceps curl 3x12', '15 dk eğimli yürüyüş']},
+    altA: {ad: 'Alt A: bacak', h: ['Leg press 3x10-12', 'Leg curl 3x12', 'Goblet squat 3x10', 'Calf raise 3x15', 'Plank 3x40 sn', '20 dk eğimli yürüyüş']},
+    ustB: {ad: 'Üst B: omuz ve kol', h: ['Makine shoulder press (ağrısız aralıkta) 3x10', 'Lateral raise 3x12-15', 'Face pull 3x15', 'Reverse pec deck 3x15', 'Göğüs destekli row 3x10', 'Hammer curl 3x12', 'Triceps rope 3x12', '15 dk eğimli yürüyüş']},
+    altB: {ad: 'Alt B: arka bacak ve karın', h: ['Dumbbell Romanian deadlift 3x10', 'Lunge 3x10 (her bacak)', 'Leg extension 3x15', 'Leg curl 2x12', 'Back extension 2x12', 'Crunch 3x15', '20 dk eğimli yürüyüş']},
+    kardiyo: {ad: 'Kardiyo', h: ['40-45 dk eğimli yürüyüş (eğim 8-10, hız 5-5,5)']},
+    yok: {ad: 'Dinlenme', h: ['Hedef 7-8 bin adım']}
+  }
+};
+const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+const OPS = Object.fromEntries(MEALS.flatMap(m => m.ops.map(o => [o.id, o])));
+const iso = d => d.toLocaleDateString('sv');
+const dateOf = s => new Date(s + 'T12:00');
+const addDays = (s, n) => { const d = dateOf(s); d.setDate(d.getDate() + n); return iso(d); };
+const monday = s => addDays(s, -((dateOf(s).getDay() + 6) % 7));
+const fmt = (n, d = 1) => n.toLocaleString(TR, {minimumFractionDigits: d, maximumFractionDigits: d});
+const mean = a => a.length ? a.reduce((x, y) => x + y) / a.length : null;
+const totals = day => {
+  const xs = [...Object.values(day.meals || {}).map(id => OPS[id]).filter(Boolean), ...(day.extra || [])];
+  return {kcal: xs.reduce((s, x) => s + (+x.kcal || 0), 0), p: xs.reduce((s, x) => s + (+x.p || 0), 0)};
+};
+const avg7 = (days, date) => {
+  const v = []; for (let i = 0; i < 7; i++) { const kg = days[addDays(date, -i)]?.kg; if (kg) v.push(+kg); }
+  return mean(v);
+};
+const T0 = +dateOf(C.start), T1 = +dateOf(C.goal);
+const planKg = t => C.startKg + (C.goalKg - C.startKg) * Math.min(1, Math.max(0, (+dateOf(t) - T0) / (T1 - T0)));
+const newer = (a, b) => ((a?.at || 0) >= (b?.at || 0) ? a : b) || undefined;
+console.assert(totals({meals: {a: 'k1', b: 'o1'}, extra: [{kcal: 100, p: 5}]}).kcal === 1220, 'totals');
+console.assert(avg7({'2026-01-07': {kg: 90}, '2026-01-05': {kg: 92}, '2025-12-31': {kg: 99}}, '2026-01-07') === 91, 'avg7');
+console.assert(addDays('2026-12-31', 1) === '2027-01-01' && monday('2026-11-15') === '2026-11-09', 'tarih');
+console.assert(planKg(C.start) === C.startKg && planKg(C.goal) === C.goalKg, 'planKg');
+console.assert(newer({at: 2}, {at: 5}).at === 5 && newer(undefined, {at: 1}).at === 1, 'newer');
+
+const TODAY = iso(new Date());
+const $ = id => document.getElementById(id);
+let S = {days: {}}, cur = TODAY, tab = 'bugun', openId = null, timer;
+try { S = JSON.parse(localStorage.diyet) || S; } catch {}
+S.days ||= {};
+const D = () => S.days[cur] || {};
+const set = fn => { fn(S.days[cur] ||= {}); save(); };
+const plan = () => S.plan || DEF_PLAN;
+const editPlan = fn => { S.plan ||= structuredClone(DEF_PLAN); fn(S.plan); S.plan.at = Date.now(); save(); };
+const status = t => $('sync').textContent = t;
+
+function save() {
+  localStorage.diyet = JSON.stringify(S); localStorage.diyetDirty = '1';
+  clearTimeout(timer); timer = setTimeout(push, 1500);
+}
+// Kutunun tamamı bu sayfaya aittir; içinde başka biçimde veri varsa ilk kayıtta ezilir.
+function merge(remote, localWins) {
+  if (!remote?.days) return;
+  S.days = localWins ? {...remote.days, ...S.days} : remote.days;
+  S.plan = newer(S.plan, remote.plan);
+}
+// shortcut: gün bazında son yazan kazanır; iki cihazda aynı günü aynı anda düzenlersen biri ezilir, gerekirse alan bazlı birleştirmeye geç.
+async function push() {
+  const key = localStorage.diyetKey;
+  if (!key) return status('Anahtar yok: sadece bu cihazda');
+  try {
+    const hd = {'X-Master-Key': key};
+    const r = await fetch(API + '/latest', {headers: hd}); if (!r.ok) throw r.status;
+    merge((await r.json()).record, true);
+    const w = await fetch(API, {method: 'PUT', headers: {...hd, 'Content-Type': 'application/json'}, body: JSON.stringify(S)});
+    if (!w.ok) throw w.status;
+    localStorage.diyet = JSON.stringify(S); localStorage.removeItem('diyetDirty'); status('✓ Kaydedildi');
+  } catch (e) { status('Kaydedilemedi (' + (e.message || e) + ')'); }
+}
+async function load() {
+  render();
+  try {
+    const key = localStorage.diyetKey;
+    const r = await fetch(API + '/latest', key ? {headers: {'X-Master-Key': key}} : {}); if (!r.ok) throw r.status;
+    merge((await r.json()).record, !!localStorage.diyetDirty);
+    status(key ? '✓ Eşitlendi' : 'Anahtar yok: sadece okuma');
+    render();
+    if (localStorage.diyetDirty) push();
+  } catch (e) { status('Çevrimdışı (' + (e.message || e) + ')'); }
+}
+
+function h(tag, props, ...kids) {
+  const e = Object.assign(document.createElement(tag), props);
+  e.append(...kids.flat().filter(k => k != null && k !== false)); return e;
+}
+const meter = (v, max, label) => h('div', {className: 'meter', role: 'progressbar', ariaLabel: label, ariaValueNow: v, ariaValueMax: max}, h('i', {style: `width:${Math.min(100, v / max * 100)}%`}));
+const tile = (l, v, s, cls) => h('div', {className: 'tile'}, h('div', {className: 'l'}, l), h('div', {className: 'v'}, v), s && h('div', {className: 's ' + (cls || '')}, s));
+
+/* ---------- Bugün ---------- */
+function hero() {
+  const t = totals(D()), su = D().su || 0, left = C.kcal - t.kcal, over = left < 0;
+  const R = 62, CIRC = 2 * Math.PI * R, frac = Math.min(1, t.kcal / C.kcal);
+  const ring = h('div', {className: 'ringbox'});
+  ring.innerHTML = `<svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--soft)" stroke-width="12"/>
+    <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(${over ? '--bad' : '--acc'})" stroke-width="12" stroke-linecap="round" stroke-dasharray="${frac * CIRC} ${CIRC}"/></svg>`;
+  ring.append(h('div', {className: 'c'}, h('div', {className: 'n'}, Math.abs(left)), h('div', {className: 'u'}, over ? 'kcal fazla' : 'kcal kaldı')));
+  return h('section', {id: 'ozet'},
+    h('div', {className: 'hero'}, ring, h('div', {className: 'stats'},
+      h('div', {className: 'stat'}, h('div', {className: 'l'}, 'Yenilen'), h('div', {className: 'v'}, t.kcal, h('small', {}, ` / ${C.kcal} kcal`))),
+      h('div', {className: 'stat'}, h('div', {className: 'l'}, 'Protein'), h('div', {className: 'v'}, t.p, h('small', {}, ` / ${C.p} g`)), meter(t.p, C.p, 'Protein')))),
+    h('div', {className: 'stat sep'}, h('div', {className: 'l'}, 'Su, her kutu 250 ml'), h('div', {className: 'v'}, fmt(su / 1000, 2), h('small', {}, ` / ${C.su / 1000} L`)),
+      h('div', {className: 'water', role: 'group', ariaLabel: 'Su'}, Array.from({length: 12}, (_, i) => {
+        const v = (i + 1) * 250;
+        return h('button', {className: su >= v ? 'full' : '', ariaLabel: v + ' ml', ariaPressed: su >= v, onclick: () => { set(d => d.su = d.su === v ? v - 250 : v); re('ozet'); }});
+      }))));
+}
+const num = (label, field, step, ph) => h('label', {}, h('input', {
+  type: 'number', inputMode: 'decimal', step, placeholder: ph || '–', value: D()[field] ?? '',
+  // odak kaybolmasın diye burada sayfa yeniden çizilmiyor
+  onchange: e => { set(d => e.target.value === '' ? delete d[field] : d[field] = +e.target.value); renderHead(); }}), label);
+const olcum = () => h('section', {}, h('h2', {}, 'Ölçümler'), h('div', {className: 'tiles'},
+  num('Sabah kilosu (kg)', 'kg', '0.05'), num('Adım', 'adim', '100'), num('Bel (cm)', 'bel', '0.5')));
+
+function mealSection(m) {
+  const info = h('small', {});
+  const setInfo = () => { const o = OPS[D().meals?.[m.k]]; info.textContent = o ? `${o.kcal} kcal · ${o.p} g protein` : m.saat + ' · birini seç'; };
+  const row = h('div', {className: 'ops'}, m.ops.map(o => {
+    const src = `https://thumb.wikimedia.org/wikipedia/commons/thumb/${o.f[0]}/${o.f[1]}/500px-${o.f[1]}`;
+    const on = D().meals?.[m.k] === o.id;
+    const b = h('button', {className: 'op' + (on ? ' sel' : ''), ariaPressed: on},
+      h('img', {src, alt: '', loading: 'lazy', onerror: e => e.target.style.visibility = 'hidden'}),
+      h('span', {className: 'ck', ariaHidden: true}, '✓'),
+      h('b', {}, o.ad), h('span', {className: 'v'}, `${o.kcal} kcal · ${o.p} g protein`), h('span', {className: 'd'}, o.ne),
+      h('span', {className: 'src'}, h('a', {href: 'https://commons.wikimedia.org/wiki/File:' + o.f[1], target: '_blank', rel: 'noopener', onclick: e => e.stopPropagation()}, 'Fotoğraf: Wikimedia Commons')));
+    // satırın yatay kaydırma konumu bozulmasın diye tüm sayfa yeniden çizilmiyor
+    b.onclick = () => {
+      const now = D().meals?.[m.k] !== o.id;
+      set(d => { d.meals ||= {}; now ? d.meals[m.k] = o.id : delete d.meals[m.k]; });
+      row.querySelectorAll('.op').forEach(x => { x.classList.toggle('sel', now && x === b); x.ariaPressed = now && x === b; });
+      setInfo(); re('ozet'); renderHead();
+    };
+    return b;
+  }));
+  setInfo();
+  return h('section', {}, h('h2', {}, m.ad, info), row);
+}
+
+function extraSection() {
+  const ad = h('input', {className: 'field', placeholder: 'Ne yedin?', ariaLabel: 'Ne yedin', style: 'flex:1 1 100%'});
+  const kc = h('input', {className: 'field', type: 'number', inputMode: 'numeric', placeholder: 'kcal', ariaLabel: 'Kalori', style: 'flex:1;width:0'});
+  const pr = h('input', {className: 'field', type: 'number', inputMode: 'numeric', placeholder: 'protein g', ariaLabel: 'Protein', style: 'flex:1;width:0'});
+  const add = () => { if (!ad.value.trim() || kc.value === '') return; set(d => (d.extra ||= []).push({ad: ad.value.trim(), kcal: +kc.value, p: +pr.value || 0})); re('ekstra'); re('ozet'); renderHead(); };
+  return h('section', {id: 'ekstra'}, h('h2', {}, 'Menü dışı', h('small', {}, "değerleri Claude'dan al")),
+    h('div', {className: 'row'}, ad, kc, pr, h('button', {className: 'btn pri', onclick: add}, 'Ekle')),
+    h('ul', {className: 'list', style: 'margin-top:8px'}, (D().extra || []).map((x, i) => h('li', {}, h('span', {}, x.ad, h('div', {className: 'mut'}, `${x.kcal} kcal · ${x.p} g protein`)),
+      h('button', {className: 'btn x', ariaLabel: x.ad + ' sil', onclick: () => { set(d => d.extra.splice(i, 1)); re('ekstra'); re('ozet'); }}, '✕')))));
+}
+
+/* ---------- Spor ---------- */
+const sporOpts = sel => Object.entries(plan().spor).map(([id, s]) => h('option', {value: id, selected: id === sel}, s.ad));
+function sporToday() {
+  const P = plan(), k = P.spor[D().spor] ? D().spor : P.hafta[dateOf(cur).getDay()], w = P.spor[k] || P.spor.yok, ok = !!D().sporOk;
+  return h('section', {id: 'sporBugun'}, h('h2', {}, 'Günün antrenmanı', h('small', {}, w.h.length + ' hareket')),
+    h('select', {className: 'field', style: 'width:100%', ariaLabel: 'Antrenman', onchange: e => { set(d => d.spor = e.target.value); re('sporBugun'); }}, sporOpts(k)),
+    h('ol', {className: 'moves'}, w.h.map(x => h('li', {}, x))),
+    h('button', {className: 'btn big ' + (ok ? 'done' : 'pri'), ariaPressed: ok, onclick: () => { set(d => { d.spor = k; d.sporOk = !ok; }); re('sporBugun'); renderHead(); }}, ok ? '✓ Tamamlandı (geri al)' : 'Tamamladım'));
+}
+function sporPlan() {
+  const P = plan(), both = () => { re('sporPlan'); re('sporBugun'); };
+  return h('section', {id: 'sporPlan'}, h('h2', {}, 'Programım', h('small', {}, 'kendine göre düzenle')),
+    h('ul', {className: 'sched'}, [1, 2, 3, 4, 5, 6, 0].map(g => h('li', {}, h('span', {}, GUNLER[g]),
+      h('select', {className: 'field', ariaLabel: GUNLER[g], onchange: e => { editPlan(p => p.hafta[g] = e.target.value); re('sporBugun'); }}, sporOpts(P.hafta[g]))))),
+    h('div', {style: 'margin-top:12px'}, Object.entries(P.spor).map(([id, w]) => h('details', {open: openId === id, ontoggle: e => { if (e.target.open) openId = id; else if (openId === id) openId = null; }},
+      h('summary', {}, w.ad),
+      h('label', {}, 'Ad', h('input', {className: 'field', value: w.ad, onchange: e => { editPlan(p => p.spor[id].ad = e.target.value.trim() || 'Adsız'); both(); }})),
+      h('label', {}, 'Hareketler (her satıra bir tane)', h('textarea', {className: 'field', rows: w.h.length + 2, value: w.h.join('\n'),
+        onchange: e => { editPlan(p => p.spor[id].h = e.target.value.split('\n').map(s => s.trim()).filter(Boolean)); re('sporBugun'); }})),
+      id !== 'yok' && h('button', {className: 'btn', style: 'margin-top:10px', onclick: () => {
+        if (!confirm(`"${w.ad}" silinsin mi?`)) return;
+        editPlan(p => { delete p.spor[id]; p.hafta = p.hafta.map(x => x === id ? 'yok' : x); }); both();
+      }}, 'Bu antrenmanı sil')))),
+    h('div', {className: 'row', style: 'margin-top:12px'},
+      h('button', {className: 'btn pri', onclick: () => { const id = 'w' + Date.now().toString(36); editPlan(p => p.spor[id] = {ad: 'Yeni antrenman', h: []}); openId = id; both(); }}, '+ Yeni antrenman'),
+      h('button', {className: 'btn', onclick: () => { if (confirm('Program varsayılana dönsün mü? Yaptığın değişiklikler silinir.')) { S.plan = {...structuredClone(DEF_PLAN), at: Date.now()}; save(); both(); } }}, 'Varsayılana dön')));
+}
+
+/* ---------- Gidişat ---------- */
+function tiles() {
+  const a = avg7(S.days, TODAY), diff = a == null ? null : a - planKg(TODAY);
+  return h('section', {}, h('h2', {}, 'Kilo', h('small', {}, `hedef ${fmt(C.goalKg, 0)} kg`)), h('div', {className: 'tiles two'},
+    tile('Güncel, 7 gün ortalaması', a == null ? '–' : fmt(a) + ' kg', `başlangıç ${fmt(C.startKg, 2)} kg`),
+    tile('Verilen', a == null ? '–' : fmt(C.startKg - a) + ' kg', a == null ? 'kilo girince hesaplanır' : `kalan ${fmt(Math.max(0, a - C.goalKg))} kg`),
+    tile('Plana göre', diff == null ? '–' : fmt(Math.abs(diff)) + ' kg', diff == null ? '' : diff <= 0.05 ? '▼ planın önünde' : '▲ planın gerisinde', diff == null ? '' : diff <= 0.05 ? 'good' : 'bad'),
+    tile('Bugün olması gereken', fmt(planKg(TODAY)) + ' kg', 'haftada yaklaşık 0,5 kg')));
+}
+function chartSection() {
+  const pts = Object.entries(S.days).filter(([, d]) => d.kg).map(([t, d]) => [t, +d.kg, avg7(S.days, t)]).sort();
+  // viewBox ekran genişliğine eşit tutulur ki eksen yazıları telefonda küçülmesin
+  const W = Math.max(280, Math.min(686, innerWidth - 66)), H = 240, L = 30, R = 46, T = 12, B = 24;
+  const kgs = [C.startKg, C.goalKg, ...pts.map(p => p[1])], lo = Math.floor(Math.min(...kgs) - 1), hi = Math.ceil(Math.max(...kgs) + 1);
+  const x = t => L + (W - L - R) * Math.min(1, Math.max(0, (+dateOf(t) - T0) / (T1 - T0)));
+  const y = kg => T + (H - T - B) * (hi - kg) / (hi - lo);
+  let grid = '', months = '';
+  for (let k = Math.ceil(lo / 5) * 5; k <= hi; k += 5) grid += `<line x1="${L}" x2="${W - R}" y1="${y(k)}" y2="${y(k)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(k) + 4}" text-anchor="end">${k}</text>`;
+  for (let d = new Date(dateOf(C.start).getFullYear(), dateOf(C.start).getMonth() + 1, 1, 12); +d <= T1; d.setMonth(d.getMonth() + 1))
+    months += `<text x="${x(iso(d))}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString(TR, {month: 'short'})}</text>`;
+  const last = pts.at(-1);
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kilo grafiği: günlük tartı, 7 günlük ortalama ve hedef planı" font-size="11" fill="var(--mut)" style="font-variant-numeric:tabular-nums">
+    ${grid}${months}<line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--axis)"/>
+    <line x1="${x(C.start)}" y1="${y(C.startKg)}" x2="${x(C.goal)}" y2="${y(C.goalKg)}" stroke="var(--axis)" stroke-width="2" stroke-linecap="round"/>
+    <text x="${x(C.goal) + 8}" y="${y(C.goalKg) + 4}">${C.goalKg} kg</text>
+    <line id="cross" y1="${T}" y2="${H - B}" stroke="var(--axis)" style="display:none"/>
+    ${pts.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3" fill="var(--mut)" opacity=".55"/>`).join('')}
+    <polyline points="${pts.map(p => x(p[0]).toFixed(1) + ',' + y(p[2]).toFixed(1)).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${last ? `<circle cx="${x(last[0])}" cy="${y(last[2])}" r="5" fill="var(--acc)" stroke="var(--surface)" stroke-width="2"/>
+      <text x="${x(last[0]) + 9}" y="${y(last[2]) - 8}" fill="var(--ink)" font-size="12" font-weight="600">${fmt(last[2])}</text>` : ''}</svg>`;
+  const wrap = h('div', {className: 'chart', innerHTML: svg}), tip = h('div', {className: 'tip', hidden: true}), cross = wrap.querySelector('#cross');
+  wrap.append(tip);
+  const move = e => {
+    if (!pts.length) return;
+    const r = wrap.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W;
+    const p = pts.reduce((a, b) => Math.abs(x(b[0]) - px) < Math.abs(x(a[0]) - px) ? b : a), cx = x(p[0]);
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.style.display = '';
+    tip.hidden = false;
+    tip.replaceChildren(h('b', {}, dateOf(p[0]).toLocaleDateString(TR, {day: 'numeric', month: 'long'})),
+      h('div', {}, `Tartı: ${fmt(p[1], 2)} kg`), h('div', {}, `7 gün ort.: ${fmt(p[2])} kg`), h('div', {}, `Plan: ${fmt(planKg(p[0]))} kg`));
+    const tx = cx / W * r.width; tip.style.left = (tx > r.width / 2 ? tx - 166 : tx + 10) + 'px';
+  };
+  wrap.onpointermove = wrap.onpointerdown = move;
+  wrap.onpointerleave = () => { tip.hidden = true; cross.style.display = 'none'; };
+  return h('section', {}, h('h2', {}, 'Grafik'),
+    h('div', {className: 'legend', innerHTML: `<span><i style="width:16px;height:2px;background:var(--acc)"></i>7 günlük ortalama</span>
+      <span><i style="width:6px;height:6px;border-radius:50%;background:var(--mut);opacity:.55"></i>Günlük tartı</span>
+      <span><i style="width:16px;height:2px;background:var(--axis)"></i>Hedef planı</span>`}),
+    wrap, pts.length ? null : h('p', {className: 'mut'}, 'Henüz kilo girişi yok. Bugün sekmesinden sabah kilonu gir.'),
+    h('details', {style: 'margin-top:12px;padding-bottom:0'}, h('summary', {}, 'Tablo olarak göster'),
+      h('table', {}, h('tr', {}, h('th', {}, 'Tarih'), h('th', {}, 'Tartı'), h('th', {}, '7 gün ort.'), h('th', {}, 'Plan')),
+        pts.slice().reverse().map(p => h('tr', {}, h('td', {}, dateOf(p[0]).toLocaleDateString(TR, {day: 'numeric', month: 'short'})), h('td', {}, fmt(p[1], 2)), h('td', {}, fmt(p[2])), h('td', {}, fmt(planKg(p[0]))))))));
+}
+function weekStats() {
+  const ds = Array.from({length: 7}, (_, i) => S.days[addDays(TODAY, -i)]).filter(Boolean);
+  const food = ds.map(totals).filter(t => t.kcal > 0), kc = mean(food.map(t => t.kcal)), pr = mean(food.map(t => t.p)), ad = mean(ds.filter(d => d.adim).map(d => d.adim));
+  const hedefGun = plan().hafta.filter(k => k !== 'yok').length;
+  return h('section', {}, h('h2', {}, 'Son 7 gün', h('small', {}, food.length + ' gün yemek kaydı')), h('div', {className: 'tiles two'},
+    tile('Ortalama kalori', kc == null ? '–' : Math.round(kc) + ' kcal', `hedef ${C.kcal}`),
+    tile('Ortalama protein', pr == null ? '–' : Math.round(pr) + ' g', `hedef ${C.p}`),
+    tile('Antrenman', ds.filter(d => d.sporOk).length + ' / ' + hedefGun, 'tamamlanan / planlanan'),
+    tile('Ortalama adım', ad == null ? '–' : Math.round(ad).toLocaleString(TR), 'hedef 7.000-8.000')));
+}
+function report() {
+  const lines = [], P = plan();
+  for (let i = 13; i >= 0; i--) {
+    const t = addDays(TODAY, -i), d = S.days[t]; if (!d) continue;
+    const s = totals(d), ne = [...Object.values(d.meals || {}).map(id => OPS[id]?.ad), ...(d.extra || []).map(x => x.ad)].filter(Boolean).join(', ');
+    lines.push(`${t} | ${d.kg ?? '-'} kg | ${s.kcal} kcal | ${s.p} g protein | su ${d.su || 0} ml | adım ${d.adim ?? '-'} | spor ${d.sporOk ? P.spor[d.spor]?.ad || 'yapıldı' : 'yok'}${d.bel ? ' | bel ' + d.bel + ' cm' : ''} | ${ne}`);
+  }
+  return `Son 14 gün (hedef ${C.kcal} kcal, ${C.p} g protein, ${C.goalKg} kg):\n` + (lines.join('\n') || 'kayıt yok');
+}
+function reportSection() {
+  const out = h('pre', {hidden: true, tabIndex: 0});
+  return h('section', {}, h('h2', {}, "Claude'a gönder"), h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Son 14 günün özetini kopyalar. Konuşmaya yapıştır, gidişatı ve tıkanmayı oradan yorumlarız.'),
+    h('button', {className: 'btn pri', onclick: async () => {
+      out.textContent = report(); out.hidden = false;
+      try { await navigator.clipboard.writeText(out.textContent); status('✓ Özet kopyalandı'); } catch { getSelection().selectAllChildren(out); }
+    }}, 'Özeti kopyala'), out);
+}
+
+/* ---------- Ayarlar ---------- */
+function keySection() {
+  const key = h('input', {className: 'field', type: 'password', placeholder: 'X-Master-Key', ariaLabel: 'JSONBin anahtarı', autocomplete: 'off', value: localStorage.diyetKey || '', style: 'flex:1'});
+  return h('section', {}, h('h2', {}, 'Eşitleme'),
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar JSONBin kutusunda tutulur. Yazabilmek için anahtarını her cihazda bir kez gir. Anahtar yalnızca bu cihazın tarayıcısında saklanır, sayfanın koduna yazılmaz.'),
+    h('div', {className: 'row'}, key, h('button', {className: 'btn pri', onclick: () => {
+      key.value.trim() ? localStorage.diyetKey = key.value.trim() : localStorage.removeItem('diyetKey'); localStorage.diyetDirty = '1'; load();
+    }}, 'Kaydet')));
+}
+const hedefSection = () => h('section', {}, h('h2', {}, 'Hedefler', h('small', {}, 'Claude günceller')),
+  h('ul', {className: 'list'}, [['Günlük kalori', C.kcal + ' kcal'], ['Günlük protein', C.p + ' g'], ['Günlük su', C.su / 1000 + ' L'], ['Hedef kilo', `${C.goalKg} kg, ${dateOf(C.goal).toLocaleDateString(TR, {day: 'numeric', month: 'long', year: 'numeric'})}`]]
+    .map(([a, b]) => h('li', {}, h('span', {}, a), h('b', {}, b)))),
+  h('p', {className: 'mut'}, 'Yemek fotoğrafları temsilidir, kaynak Wikimedia Commons.'));
+
+/* ---------- Çatı ---------- */
+const TABS = [
+  ['bugun', 'Bugün', '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/>'],
+  ['spor', 'Spor', '<path d="M3.5 9.5v5M6.5 7v10M17.5 7v10M20.5 9.5v5M6.5 12h11"/>'],
+  ['gidisat', 'Gidişat', '<path d="M4 18l5-6 4 3 7-9"/><path d="M15 6h5v5"/>'],
+  ['ayar', 'Ayarlar', '<path d="M4 7h8M18 7h2M4 17h2M12 17h8"/><circle cx="15" cy="7" r="2.5"/><circle cx="9" cy="17" r="2.5"/>']
+];
+const VIEWS = {
+  bugun: () => [hero(), olcum(), ...MEALS.map(mealSection), extraSection()],
+  spor: () => [sporToday(), sporPlan()],
+  gidisat: () => [tiles(), chartSection(), weekStats(), reportSection()],
+  ayar: () => [keySection(), hedefSection()]
+};
+const BUILD = {ozet: hero, ekstra: extraSection, sporBugun: sporToday, sporPlan};
+const re = id => $(id)?.replaceWith(BUILD[id]());
+const hasData = d => d && (d.kg || d.sporOk || totals(d).kcal > 0);
+
+function renderHead() {
+  const daily = tab === 'bugun' || tab === 'spor';
+  $('title').textContent = daily ? (cur === TODAY ? 'Bugün, ' : '') + dateOf(cur).toLocaleDateString(TR, {day: 'numeric', month: 'long', weekday: 'long'}) : TABS.find(t => t[0] === tab)[1];
+  $('today').hidden = !daily || cur === TODAY;
+  $('week').hidden = !daily;
+  const m = monday(cur), go = t => () => { cur = t; render(); };
+  $('week').replaceChildren(
+    h('button', {className: 'arr', ariaLabel: 'Önceki hafta', onclick: go(addDays(cur, -7))}, '‹'),
+    ...Array.from({length: 7}, (_, i) => {
+      const t = addDays(m, i), d = dateOf(t);
+      return h('button', {className: (t === cur ? 'on' : '') + (t === TODAY ? ' now' : ''), ariaLabel: d.toLocaleDateString(TR, {day: 'numeric', month: 'long', weekday: 'long'}), ariaCurrent: t === cur ? 'date' : null, onclick: go(t)},
+        h('span', {}, GUNLER[d.getDay()].slice(0, 3)), h('b', {}, d.getDate()), h('i', {className: hasData(S.days[t]) ? 'dot' : ''}));
+    }),
+    h('button', {className: 'arr', ariaLabel: 'Sonraki hafta', onclick: go(addDays(cur, 7))}, '›'));
+}
+function render() {
+  renderHead();
+  $('tabs').replaceChildren(...TABS.map(([id, ad, icon]) => h('button', {ariaCurrent: tab === id ? 'page' : null, onclick: () => { tab = id; render(); scrollTo(0, 0); },
+    innerHTML: `<svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg><span>${ad}</span>`})));
+  $('app').replaceChildren(...VIEWS[tab]());
+}
+$('today').onclick = () => { cur = TODAY; render(); };
+load();
+</script>
+</body>
+</html>
