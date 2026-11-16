@@ -134,29 +134,36 @@ const BIN = '6af9d32bffd5d16053c35613', API = 'https://api.jsonbin.io/v3/b/' + B
 const C = {kcal: 2000, p: 140, su: 3000, start: '2026-11-15', startKg: 95.85, goal: '2027-05-15', goalKg: 82};
 const TR = 'tr-TR';
 
+// Düzen: 2 ana öğün (kahvaltı ~600, ana öğün ~800 kcal) ve 2 ara öğün (~300 kcal). Toplam yaklaşık 2.000 kcal, 140 g protein.
+const ARA = [
+  {id: 'a1', ad: 'Elma, süzme yoğurt, ceviz', ne: '1 elma, 200 g süzme yoğurt, 3 ceviz', kcal: 290, p: 19, f: ['6/6f', 'Jazz_apples_with_yoghurt_15-02-2026.jpg']},
+  {id: 'a2', ad: 'Peynirli sandviç ve ayran', ne: '2 dilim tam buğday ekmek, 40 g beyaz peynir, domates, 200 ml ayran', kcal: 330, p: 17, f: ['a/a0', 'Ayran_%28large_glass%29.jpg']},
+  {id: 'a3', ad: 'Haşlanmış yumurta', ne: '3 yumurta, 1 dilim ekmek, salatalık', kcal: 300, p: 21, f: ['a/a4', 'Boiled_Egg_-_Crossection.jpg']},
+  {id: 'a4', ad: 'Süzme yoğurt ve meyve', ne: '300 g süzme yoğurt, 1 avuç çilek ya da başka meyve', kcal: 300, p: 27, f: ['b/b1', 'Strawberries_%26_Yogurt.jpg']},
+  {id: 'a5', ad: 'Lor ve muz', ne: '200 g lor, 1 muz, tarçın', kcal: 280, p: 27, f: ['d/d1', 'Yogurt_fruit_bowl.jpg']},
+  {id: 'a6', ad: 'Ton balıklı sandviç', ne: '1 kutu ton (süzülmüş), 2 dilim tam buğday ekmek, yeşillik', kcal: 270, p: 31, f: ['7/74', 'Tunafish_and_Emmenthaler_cheese_sandwich_with_tomato_and_black_pepper_on_multigrain_toast_-_Massachusetts.jpg']},
+  {id: 'a7', ad: 'Küçük tavuk dürüm', ne: '1 lavaş, 80 g ızgara tavuk, yeşillik, 1 yemek kaşığı yoğurt', kcal: 300, p: 30, f: ['5/5d', 'Handmade_Chicken_Shawarma_Wrap_-_Lavash.jpg']},
+  {id: 'a8', ad: 'Yulaf ve yoğurt', ne: '40 g yulaf, 200 g yoğurt, yarım muz, tarçın', kcal: 320, p: 13, f: ['5/59', 'Cereal%2C_Yoghurt%2C_Berries_%26_Apple_%284380985577%29.jpg']}
+];
 const MEALS = [
   {k: 'kahvalti', ad: 'Kahvaltı', ops: [
-    {id: 'k1', ad: 'Klasik kahvaltı', ne: '3 yumurta, 30 g beyaz peynir, 2 dilim tam buğday ekmek, domates-salatalık, 5 zeytin', kcal: 500, p: 30, f: ['0/0e', 'Turkish_breakfast_%2820658662572%29.jpg']},
-    {id: 'k2', ad: 'Menemen', ne: '3 yumurtalı menemen, 30 g peynir, 2 dilim ekmek', kcal: 520, p: 29, f: ['e/e7', 'Turkish_egg_dish_Menemen.jpg']},
-    {id: 'k3', ad: 'Yulaf kâsesi', ne: '60 g yulaf, 250 g süzme yoğurt, 1 muz, tarçın', kcal: 480, p: 31, f: ['1/1f', 'Banana_Oatmeal_Breakfast_Bowl_%2844302857265%29.jpg']},
-    {id: 'k4', ad: 'Omlet ve lor', ne: '3 yumurtalı omlet, 100 g lor, 1 dilim ekmek, yeşillik', kcal: 430, p: 38, f: ['5/50', 'Omelette_on_a_plate.jpg']}]},
-  {k: 'ogle', ad: 'Öğle', ops: [
-    {id: 'o1', ad: 'Tavuk ve pilav', ne: '150 g ızgara tavuk, 6 yemek kaşığı pilav, salata, 150 g yoğurt', kcal: 620, p: 55, f: ['d/de', 'Chiken_Steaks_in_Pakistan.jpg']},
-    {id: 'o2', ad: 'Köfte ve makarna', ne: '150 g ızgara köfte, 6 yemek kaşığı makarna, salata, ayran', kcal: 680, p: 45, f: ['2/22', 'Kofte_and_Pilav.jpg']},
-    {id: 'o3', ad: 'Ton balıklı salata', ne: '1 kutu ton (süzülmüş), bol salata, 2 dilim ekmek, 1 yemek kaşığı zeytinyağı, 150 g yoğurt', kcal: 520, p: 42, f: ['c/c8', 'Veggie%2BTuna_salad.jpg']},
-    {id: 'o4', ad: 'Kuru fasulye', ne: '1 porsiyon etli kuru fasulye, 4 yemek kaşığı bulgur, cacık', kcal: 600, p: 35, f: ['3/35', 'Kuru_Fasulye_pilav.jpg']},
-    {id: 'o5', ad: 'Tavuk döner (dışarıda)', ne: 'Porsiyon tavuk döner, yarım pilav, salata, ayran. Dürüm değil.', kcal: 650, p: 45, f: ['a/aa', 'Tavuk_doner.jpg']}]},
-  {k: 'ara', ad: 'Ara öğün', ops: [
-    {id: 'a1', ad: 'Elma ve yoğurt', ne: '1 elma, 200 g yoğurt', kcal: 220, p: 8, f: ['6/6f', 'Jazz_apples_with_yoghurt_15-02-2026.jpg']},
-    {id: 'a2', ad: 'Ayran ve muz', ne: '300 ml ayran, 1 muz', kcal: 220, p: 8, f: ['a/a0', 'Ayran_%28large_glass%29.jpg']},
-    {id: 'a3', ad: 'Haşlanmış yumurta', ne: '2 yumurta, salatalık', kcal: 160, p: 13, f: ['a/a4', 'Boiled_Egg_-_Crossection.jpg']},
-    {id: 'a4', ad: 'Süzme yoğurt ve meyve', ne: '200 g süzme yoğurt, 1 avuç çilek ya da başka meyve', kcal: 200, p: 20, f: ['b/b1', 'Strawberries_%26_Yogurt.jpg']}]},
-  {k: 'aksam', ad: 'Akşam', ops: [
-    {id: 'x1', ad: 'Tavuk ve çorba', ne: '170 g ızgara tavuk, 1 kâse mercimek çorbası, bol salata', kcal: 560, p: 55, f: ['6/65', 'Mercimek_%C3%A7orbasi.jpg']},
-    {id: 'x2', ad: 'Izgara köfte', ne: '170 g ızgara köfte, 4 yemek kaşığı pilav, bol salata', kcal: 620, p: 42, f: ['d/d2', 'Izgara_k%C3%B6fte.jpg']},
-    {id: 'x3', ad: 'Izgara balık', ne: '180 g ızgara somon ya da levrek, 1 orta haşlanmış patates, salata', kcal: 620, p: 42, f: ['f/fb', 'Grilled_salmon_garnished_with_lemon_and_parsley.jpg']},
-    {id: 'x4', ad: 'Et sote', ne: '170 g et sote ya da bonfile, ızgara sebze, 150 g yoğurt', kcal: 580, p: 50, f: ['2/26', 'Bosphorus_kebab.jpg']},
-    {id: 'x5', ad: 'Tavuk şiş (dışarıda)', ne: 'Porsiyon tavuk şiş, yarım pilav, salata. Ekmek sepeti yok.', kcal: 620, p: 50, f: ['4/4d', '%C5%9Ei%C5%9F_tavuk_%28or_tavuk_%C5%9Fi%C5%9F%29.jpg']}]}
+    {id: 'k1', ad: 'Klasik kahvaltı', ne: '3 yumurta, 60 g beyaz peynir, 2 dilim tam buğday ekmek, domates-salatalık, 8 zeytin', kcal: 600, p: 35, f: ['0/0e', 'Turkish_breakfast_%2820658662572%29.jpg']},
+    {id: 'k2', ad: 'Menemen', ne: '3 yumurtalı menemen, 60 g peynir, 2 dilim ekmek', kcal: 600, p: 34, f: ['e/e7', 'Turkish_egg_dish_Menemen.jpg']},
+    {id: 'k3', ad: 'Yulaf kâsesi', ne: '70 g yulaf, 300 g süzme yoğurt, 1 muz, 2 ceviz, tarçın', kcal: 610, p: 38, f: ['1/1f', 'Banana_Oatmeal_Breakfast_Bowl_%2844302857265%29.jpg']},
+    {id: 'k4', ad: 'Omlet ve lor', ne: '3 yumurtalı omlet, 150 g lor, 2 dilim ekmek, yeşillik', kcal: 550, p: 45, f: ['5/50', 'Omelette_on_a_plate.jpg']}]},
+  {k: 'ara1', ad: 'Ara öğün 1', ops: ARA},
+  {k: 'ara2', ad: 'Ara öğün 2', ops: ARA},
+  {k: 'ana', ad: 'Ana öğün', ops: [
+    {id: 'o1', ad: 'Tavuk ve pilav', ne: '200 g ızgara tavuk, 8 yemek kaşığı pilav, salata (1 yemek kaşığı zeytinyağı), 200 g yoğurt', kcal: 800, p: 72, f: ['d/de', 'Chiken_Steaks_in_Pakistan.jpg']},
+    {id: 'o2', ad: 'Köfte ve makarna', ne: '200 g ızgara köfte, 6 yemek kaşığı makarna, salata, ayran', kcal: 820, p: 52, f: ['2/22', 'Kofte_and_Pilav.jpg']},
+    {id: 'x2', ad: 'Izgara köfte ve pilav', ne: '200 g ızgara köfte, 6 yemek kaşığı pilav, bol salata, ayran', kcal: 820, p: 48, f: ['d/d2', 'Izgara_k%C3%B6fte.jpg']},
+    {id: 'x1', ad: 'Tavuk ve çorba', ne: '200 g ızgara tavuk, 1 kâse mercimek çorbası, 2 dilim ekmek, salata (1 yemek kaşığı zeytinyağı)', kcal: 750, p: 78, f: ['6/65', 'Mercimek_%C3%A7orbasi.jpg']},
+    {id: 'x3', ad: 'Izgara balık', ne: '220 g ızgara somon ya da levrek, 2 orta haşlanmış patates, salata (1 yemek kaşığı zeytinyağı)', kcal: 750, p: 50, f: ['f/fb', 'Grilled_salmon_garnished_with_lemon_and_parsley.jpg']},
+    {id: 'x4', ad: 'Et sote', ne: '200 g et sote ya da bonfile, 6 yemek kaşığı bulgur pilavı, ızgara sebze, 150 g yoğurt', kcal: 760, p: 60, f: ['2/26', 'Bosphorus_kebab.jpg']},
+    {id: 'o4', ad: 'Kuru fasulye', ne: '1,5 porsiyon etli kuru fasulye, 6 yemek kaşığı bulgur, cacık', kcal: 740, p: 42, f: ['3/35', 'Kuru_Fasulye_pilav.jpg']},
+    {id: 'o3', ad: 'Ton balıklı salata', ne: '2 kutu ton (süzülmüş), bol salata, 1 haşlanmış yumurta, 2 dilim ekmek, 1 yemek kaşığı zeytinyağı, 200 g yoğurt', kcal: 700, p: 68, f: ['c/c8', 'Veggie%2BTuna_salad.jpg']},
+    {id: 'o5', ad: 'Tavuk döner (dışarıda)', ne: 'Porsiyon tavuk döner, pilav, salata, ayran. Dürüm değil.', kcal: 720, p: 48, f: ['a/aa', 'Tavuk_doner.jpg']},
+    {id: 'x5', ad: 'Tavuk şiş (dışarıda)', ne: 'Porsiyon tavuk şiş, pilav, salata, ayran. Ekmek sepeti yok.', kcal: 730, p: 66, f: ['4/4d', '%C5%9Ei%C5%9F_tavuk_%28or_tavuk_%C5%9Fi%C5%9F%29.jpg']}]}
 ];
 
 // Varsayılan program; uygulamadan düzenlenince S.plan olarak kaydedilir.
@@ -174,6 +181,7 @@ const DEF_PLAN = {
 const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
 const OPS = Object.fromEntries(MEALS.flatMap(m => m.ops.map(o => [o.id, o])));
+console.assert(Object.keys(OPS).length === 22, 'öğün kimlikleri benzersiz olmalı');
 const iso = d => d.toLocaleDateString('sv');
 const dateOf = s => new Date(s + 'T12:00');
 const addDays = (s, n) => { const d = dateOf(s); d.setDate(d.getDate() + n); return iso(d); };
@@ -188,20 +196,20 @@ const avg7 = (days, date) => {
   const v = []; for (let i = 0; i < 7; i++) { const kg = days[addDays(date, -i)]?.kg; if (kg) v.push(+kg); }
   return mean(v);
 };
-// Öğün saatleri kahvaltıya göre kayar; akşam yemeği en geç 21:00 (uykudan en az 3 saat önce).
-const LATEST = 21 * 60, hm = s => +s.slice(0, 2) * 60 + +s.slice(3), toHM = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+// Öğün saatleri kahvaltıya göre kayar; ana öğün en geç 19:30, ara öğünler ikisinin arasına eşit dağılır.
+const LATEST = 19.5 * 60, hm = s => +s.slice(0, 2) * 60 + +s.slice(3), toHM = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 const saatler = kt => {
-  const b = hm(kt), d = Math.max(Math.min(b + 630, LATEST), b + 240), at = f => toHM(Math.round((b + (d - b) * f) / 15) * 15);
-  return {kahvalti: kt, ogle: at(.4), ara: at(.7), aksam: at(1)};
+  const b = hm(kt), d = Math.max(Math.min(b + 510, LATEST), b + 240), at = f => toHM(Math.round((b + (d - b) * f) / 15) * 15);
+  return {kahvalti: kt, ara1: at(1 / 3), ara2: at(2 / 3), ana: at(1)};
 };
 const T0 = +dateOf(C.start), T1 = +dateOf(C.goal);
 const planKg = t => C.startKg + (C.goalKg - C.startKg) * Math.min(1, Math.max(0, (+dateOf(t) - T0) / (T1 - T0)));
 const newer = (a, b) => ((a?.at || 0) >= (b?.at || 0) ? a : b) || undefined;
-console.assert(totals({meals: {a: 'k1', b: 'o1'}, extra: [{kcal: 100, p: 5}]}).kcal === 1220, 'totals');
+console.assert(totals({meals: {a: 'k1', b: 'o1'}, extra: [{kcal: 100, p: 5}]}).kcal === 1500, 'totals');
 console.assert(avg7({'2026-01-07': {kg: 90}, '2026-01-05': {kg: 92}, '2025-12-31': {kg: 99}}, '2026-01-07') === 91, 'avg7');
 console.assert(addDays('2026-12-31', 1) === '2027-01-01' && monday('2026-11-15') === '2026-11-09', 'tarih');
 console.assert(planKg(C.start) === C.startKg && planKg(C.goal) === C.goalKg, 'planKg');
-console.assert(JSON.stringify(saatler('10:00')) === '{"kahvalti":"10:00","ogle":"14:15","ara":"17:15","aksam":"20:30"}' && saatler('12:00').ogle === '15:30' && saatler('12:00').aksam === '21:00', 'saatler');
+console.assert(JSON.stringify(saatler('10:00')) === '{"kahvalti":"10:00","ara1":"12:45","ara2":"15:45","ana":"18:30"}' && JSON.stringify(saatler('12:00')) === '{"kahvalti":"12:00","ara1":"14:30","ara2":"17:00","ana":"19:30"}', 'saatler');
 console.assert(newer({at: 2}, {at: 5}).at === 5 && newer(undefined, {at: 1}).at === 1, 'newer');
 
 const TODAY = iso(new Date());
@@ -308,7 +316,7 @@ function mealSection(m) {
   }));
   setInfo();
   return h('section', {}, h('h2', {}, m.ad, info),
-    m.k === 'kahvalti' && h('label', {className: 'kt'}, h('span', {}, 'Kahvaltı saati', h('div', {className: 'mut'}, 'Diğer öğünler buna göre kayar, akşam en geç 21:00')),
+    m.k === 'kahvalti' && h('label', {className: 'kt'}, h('span', {}, 'Kahvaltı saati', h('div', {className: 'mut'}, 'Diğer öğünler buna göre kayar, ana öğün en geç 19:30')),
       h('input', {className: 'field', type: 'time', value: ktOf(), onchange: e => { if (!e.target.value) return; set(d => d.kt = e.target.value); infos.forEach(f => f()); }})),
     row);
 }
