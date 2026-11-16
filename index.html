@@ -168,12 +168,11 @@ const MEALS = [
 
 // Varsayılan program; uygulamadan düzenlenince S.plan olarak kaydedilir.
 const DEF_PLAN = {
-  hafta: ['yok', 'ustA', 'altA', 'yok', 'ustB', 'altB', 'kardiyo'], // pazar=0
+  hafta: ['yok', 'gogus', 'sirt', 'kardiyo', 'omuz', 'yok', 'kardiyo'], // pazar=0
   spor: {
-    ustA: {ad: 'Üst A: göğüs ve sırt', h: ['Chest press makine 3x8-12', 'Lat pulldown 3x8-12', 'Incline dumbbell press (avuçlar birbirine bakar) 3x10', 'Seated cable row 3x10', 'Triceps pushdown 3x12', 'Biceps curl 3x12', '15 dk eğimli yürüyüş']},
-    altA: {ad: 'Alt A: bacak', h: ['Leg press 3x10-12', 'Leg curl 3x12', 'Goblet squat 3x10', 'Calf raise 3x15', 'Plank 3x40 sn', '20 dk eğimli yürüyüş']},
-    ustB: {ad: 'Üst B: omuz ve kol', h: ['Makine shoulder press (ağrısız aralıkta) 3x10', 'Lateral raise 3x12-15', 'Face pull 3x15', 'Reverse pec deck 3x15', 'Göğüs destekli row 3x10', 'Hammer curl 3x12', 'Triceps rope 3x12', '15 dk eğimli yürüyüş']},
-    altB: {ad: 'Alt B: arka bacak ve karın', h: ['Dumbbell Romanian deadlift 3x10', 'Lunge 3x10 (her bacak)', 'Leg extension 3x15', 'Leg curl 2x12', 'Back extension 2x12', 'Crunch 3x15', '20 dk eğimli yürüyüş']},
+    gogus: {ad: 'Göğüs ve arka kol', h: ['Chest press', 'Incline / decline press', 'Sıkıştırma', 'Arka kol superset', 'Triceps kickback', 'Eğimli yürüyüş 15-20 dk']},
+    sirt: {ad: 'Sırt ve ön kol', h: ['Lat pulldown', 'Seated row', 'İple yukarıdan kanada çekiş (cable)', 'Biceps 7-7-7', 'Yandan ön kol (hammer curl)', 'Eğimli yürüyüş 15-20 dk']},
+    omuz: {ad: 'Omuz ve bacak', h: ['Omuz superset 1', 'Omuz superset 2', 'Leg press', 'Leg curl', 'Leg extension', 'Eğimli yürüyüş 15-20 dk']},
     kardiyo: {ad: 'Kardiyo', h: ['40-45 dk eğimli yürüyüş (eğim 8-10, hız 5-5,5)']},
     yok: {ad: 'Dinlenme', h: ['Hedef 7-8 bin adım']}
   }
