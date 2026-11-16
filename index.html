@@ -57,6 +57,7 @@ p{margin:8px 0 0}
 .water{display:grid;grid-template-columns:repeat(12,1fr);gap:2px;margin-top:6px}
 .water button{height:32px;padding:0;border:0;border-radius:4px;background:var(--soft)}
 .water .full{background:var(--acc)}
+.kt{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;font-size:.9rem}
 .sep{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .tiles.two{grid-template-columns:repeat(2,1fr)}
@@ -134,23 +135,23 @@ const C = {kcal: 2000, p: 140, su: 3000, start: '2026-11-15', startKg: 95.85, go
 const TR = 'tr-TR';
 
 const MEALS = [
-  {k: 'kahvalti', ad: 'Kahvaltı', saat: '10:00', ops: [
+  {k: 'kahvalti', ad: 'Kahvaltı', ops: [
     {id: 'k1', ad: 'Klasik kahvaltı', ne: '3 yumurta, 30 g beyaz peynir, 2 dilim tam buğday ekmek, domates-salatalık, 5 zeytin', kcal: 500, p: 30, f: ['0/0e', 'Turkish_breakfast_%2820658662572%29.jpg']},
     {id: 'k2', ad: 'Menemen', ne: '3 yumurtalı menemen, 30 g peynir, 2 dilim ekmek', kcal: 520, p: 29, f: ['e/e7', 'Turkish_egg_dish_Menemen.jpg']},
     {id: 'k3', ad: 'Yulaf kâsesi', ne: '60 g yulaf, 250 g süzme yoğurt, 1 muz, tarçın', kcal: 480, p: 31, f: ['1/1f', 'Banana_Oatmeal_Breakfast_Bowl_%2844302857265%29.jpg']},
     {id: 'k4', ad: 'Omlet ve lor', ne: '3 yumurtalı omlet, 100 g lor, 1 dilim ekmek, yeşillik', kcal: 430, p: 38, f: ['5/50', 'Omelette_on_a_plate.jpg']}]},
-  {k: 'ogle', ad: 'Öğle', saat: '14:00', ops: [
+  {k: 'ogle', ad: 'Öğle', ops: [
     {id: 'o1', ad: 'Tavuk ve pilav', ne: '150 g ızgara tavuk, 6 yemek kaşığı pilav, salata, 150 g yoğurt', kcal: 620, p: 55, f: ['d/de', 'Chiken_Steaks_in_Pakistan.jpg']},
     {id: 'o2', ad: 'Köfte ve makarna', ne: '150 g ızgara köfte, 6 yemek kaşığı makarna, salata, ayran', kcal: 680, p: 45, f: ['2/22', 'Kofte_and_Pilav.jpg']},
     {id: 'o3', ad: 'Ton balıklı salata', ne: '1 kutu ton (süzülmüş), bol salata, 2 dilim ekmek, 1 yemek kaşığı zeytinyağı, 150 g yoğurt', kcal: 520, p: 42, f: ['c/c8', 'Veggie%2BTuna_salad.jpg']},
     {id: 'o4', ad: 'Kuru fasulye', ne: '1 porsiyon etli kuru fasulye, 4 yemek kaşığı bulgur, cacık', kcal: 600, p: 35, f: ['3/35', 'Kuru_Fasulye_pilav.jpg']},
     {id: 'o5', ad: 'Tavuk döner (dışarıda)', ne: 'Porsiyon tavuk döner, yarım pilav, salata, ayran. Dürüm değil.', kcal: 650, p: 45, f: ['a/aa', 'Tavuk_doner.jpg']}]},
-  {k: 'ara', ad: 'Ara öğün', saat: '17:00', ops: [
+  {k: 'ara', ad: 'Ara öğün', ops: [
     {id: 'a1', ad: 'Elma ve yoğurt', ne: '1 elma, 200 g yoğurt', kcal: 220, p: 8, f: ['6/6f', 'Jazz_apples_with_yoghurt_15-02-2026.jpg']},
     {id: 'a2', ad: 'Ayran ve muz', ne: '300 ml ayran, 1 muz', kcal: 220, p: 8, f: ['a/a0', 'Ayran_%28large_glass%29.jpg']},
     {id: 'a3', ad: 'Haşlanmış yumurta', ne: '2 yumurta, salatalık', kcal: 160, p: 13, f: ['a/a4', 'Boiled_Egg_-_Crossection.jpg']},
     {id: 'a4', ad: 'Süzme yoğurt ve meyve', ne: '200 g süzme yoğurt, 1 avuç çilek ya da başka meyve', kcal: 200, p: 20, f: ['b/b1', 'Strawberries_%26_Yogurt.jpg']}]},
-  {k: 'aksam', ad: 'Akşam', saat: '20:30', ops: [
+  {k: 'aksam', ad: 'Akşam', ops: [
     {id: 'x1', ad: 'Tavuk ve çorba', ne: '170 g ızgara tavuk, 1 kâse mercimek çorbası, bol salata', kcal: 560, p: 55, f: ['6/65', 'Mercimek_%C3%A7orbasi.jpg']},
     {id: 'x2', ad: 'Izgara köfte', ne: '170 g ızgara köfte, 4 yemek kaşığı pilav, bol salata', kcal: 620, p: 42, f: ['d/d2', 'Izgara_k%C3%B6fte.jpg']},
     {id: 'x3', ad: 'Izgara balık', ne: '180 g ızgara somon ya da levrek, 1 orta haşlanmış patates, salata', kcal: 620, p: 42, f: ['f/fb', 'Grilled_salmon_garnished_with_lemon_and_parsley.jpg']},
@@ -187,6 +188,12 @@ const avg7 = (days, date) => {
   const v = []; for (let i = 0; i < 7; i++) { const kg = days[addDays(date, -i)]?.kg; if (kg) v.push(+kg); }
   return mean(v);
 };
+// Öğün saatleri kahvaltıya göre kayar; akşam yemeği en geç 21:00 (uykudan en az 3 saat önce).
+const LATEST = 21 * 60, hm = s => +s.slice(0, 2) * 60 + +s.slice(3), toHM = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+const saatler = kt => {
+  const b = hm(kt), d = Math.max(Math.min(b + 630, LATEST), b + 240), at = f => toHM(Math.round((b + (d - b) * f) / 15) * 15);
+  return {kahvalti: kt, ogle: at(.4), ara: at(.7), aksam: at(1)};
+};
 const T0 = +dateOf(C.start), T1 = +dateOf(C.goal);
 const planKg = t => C.startKg + (C.goalKg - C.startKg) * Math.min(1, Math.max(0, (+dateOf(t) - T0) / (T1 - T0)));
 const newer = (a, b) => ((a?.at || 0) >= (b?.at || 0) ? a : b) || undefined;
@@ -194,6 +201,7 @@ console.assert(totals({meals: {a: 'k1', b: 'o1'}, extra: [{kcal: 100, p: 5}]}).k
 console.assert(avg7({'2026-01-07': {kg: 90}, '2026-01-05': {kg: 92}, '2025-12-31': {kg: 99}}, '2026-01-07') === 91, 'avg7');
 console.assert(addDays('2026-12-31', 1) === '2027-01-01' && monday('2026-11-15') === '2026-11-09', 'tarih');
 console.assert(planKg(C.start) === C.startKg && planKg(C.goal) === C.goalKg, 'planKg');
+console.assert(JSON.stringify(saatler('10:00')) === '{"kahvalti":"10:00","ogle":"14:15","ara":"17:15","aksam":"20:30"}' && saatler('12:00').ogle === '15:30' && saatler('12:00').aksam === '21:00', 'saatler');
 console.assert(newer({at: 2}, {at: 5}).at === 5 && newer(undefined, {at: 1}).at === 1, 'newer');
 
 const TODAY = iso(new Date());
@@ -204,6 +212,9 @@ S.days ||= {};
 const D = () => S.days[cur] || {};
 const set = fn => { fn(S.days[cur] ||= {}); save(); };
 const plan = () => S.plan || DEF_PLAN;
+// O gün girilmediyse en son girilen kahvaltı saati geçerli olur.
+const ktOf = () => D().kt || S.days[Object.keys(S.days).filter(t => t < cur && S.days[t].kt).sort().at(-1)]?.kt || '10:00';
+let infos = [];
 const editPlan = fn => { S.plan ||= structuredClone(DEF_PLAN); fn(S.plan); S.plan.at = Date.now(); save(); };
 const status = t => $('sync').textContent = t;
 
@@ -276,7 +287,8 @@ const olcum = () => h('section', {}, h('h2', {}, 'Ölçümler'), h('div', {class
 
 function mealSection(m) {
   const info = h('small', {});
-  const setInfo = () => { const o = OPS[D().meals?.[m.k]]; info.textContent = o ? `${o.kcal} kcal · ${o.p} g protein` : m.saat + ' · birini seç'; };
+  const setInfo = () => { const o = OPS[D().meals?.[m.k]]; info.textContent = saatler(ktOf())[m.k] + ' · ' + (o ? `${o.kcal} kcal` : 'birini seç'); };
+  infos.push(setInfo);
   const row = h('div', {className: 'ops'}, m.ops.map(o => {
     const src = `https://thumb.wikimedia.org/wikipedia/commons/thumb/${o.f[0]}/${o.f[1]}/500px-${o.f[1]}`;
     const on = D().meals?.[m.k] === o.id;
@@ -295,7 +307,10 @@ function mealSection(m) {
     return b;
   }));
   setInfo();
-  return h('section', {}, h('h2', {}, m.ad, info), row);
+  return h('section', {}, h('h2', {}, m.ad, info),
+    m.k === 'kahvalti' && h('label', {className: 'kt'}, h('span', {}, 'Kahvaltı saati', h('div', {className: 'mut'}, 'Diğer öğünler buna göre kayar, akşam en geç 21:00')),
+      h('input', {className: 'field', type: 'time', value: ktOf(), onchange: e => { if (!e.target.value) return; set(d => d.kt = e.target.value); infos.forEach(f => f()); }})),
+    row);
 }
 
 function extraSection() {
@@ -405,7 +420,7 @@ function report() {
   for (let i = 13; i >= 0; i--) {
     const t = addDays(TODAY, -i), d = S.days[t]; if (!d) continue;
     const s = totals(d), ne = [...Object.values(d.meals || {}).map(id => OPS[id]?.ad), ...(d.extra || []).map(x => x.ad)].filter(Boolean).join(', ');
-    lines.push(`${t} | ${d.kg ?? '-'} kg | ${s.kcal} kcal | ${s.p} g protein | su ${d.su || 0} ml | adım ${d.adim ?? '-'} | spor ${d.sporOk ? P.spor[d.spor]?.ad || 'yapıldı' : 'yok'}${d.bel ? ' | bel ' + d.bel + ' cm' : ''} | ${ne}`);
+    lines.push(`${t} | ${d.kg ?? '-'} kg |${d.kt ? ' kahvaltı ' + d.kt + ' |' : ''} ${s.kcal} kcal | ${s.p} g protein | su ${d.su || 0} ml | adım ${d.adim ?? '-'} | spor ${d.sporOk ? P.spor[d.spor]?.ad || 'yapıldı' : 'yok'}${d.bel ? ' | bel ' + d.bel + ' cm' : ''} | ${ne}`);
   }
   return `Son 14 gün (hedef ${C.kcal} kcal, ${C.p} g protein, ${C.goalKg} kg):\n` + (lines.join('\n') || 'kayıt yok');
 }
@@ -440,7 +455,7 @@ const TABS = [
   ['ayar', 'Ayarlar', '<path d="M4 7h8M18 7h2M4 17h2M12 17h8"/><circle cx="15" cy="7" r="2.5"/><circle cx="9" cy="17" r="2.5"/>']
 ];
 const VIEWS = {
-  bugun: () => [hero(), olcum(), ...MEALS.map(mealSection), extraSection()],
+  bugun: () => (infos = [], [hero(), olcum(), ...MEALS.map(mealSection), extraSection()]),
   spor: () => [sporToday(), sporPlan()],
   gidisat: () => [tiles(), chartSection(), weekStats(), reportSection()],
   ayar: () => [keySection(), hedefSection()]
@@ -460,7 +475,7 @@ function renderHead() {
     ...Array.from({length: 7}, (_, i) => {
       const t = addDays(m, i), d = dateOf(t);
       return h('button', {className: (t === cur ? 'on' : '') + (t === TODAY ? ' now' : ''), ariaLabel: d.toLocaleDateString(TR, {day: 'numeric', month: 'long', weekday: 'long'}), ariaCurrent: t === cur ? 'date' : null, onclick: go(t)},
-        h('span', {}, GUNLER[d.getDay()].slice(0, 3)), h('b', {}, d.getDate()), h('i', {className: hasData(S.days[t]) ? 'dot' : ''}));
+        h('span', {}, ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'][d.getDay()]), h('b', {}, d.getDate()), h('i', {className: hasData(S.days[t]) ? 'dot' : ''}));
     }),
     h('button', {className: 'arr', ariaLabel: 'Sonraki hafta', onclick: go(addDays(cur, 7))}, '›'));
 }
