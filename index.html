@@ -68,18 +68,6 @@ p{margin:8px 0 0}
 .tile .v{font-size:1.45rem;font-weight:650;letter-spacing:-.02em}
 .tile .s{font-size:.78rem;color:var(--ink2)}
 .tile .s.good{color:var(--good)}.tile .s.bad{color:var(--bad)}
-.ops{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:2px 16px 6px;scroll-snap-type:x proximity;scrollbar-width:none}
-.ops::-webkit-scrollbar{display:none}
-.op{position:relative;flex:0 0 210px;scroll-snap-align:center;text-align:left;padding:0;overflow:hidden;background:var(--page);border:2px solid var(--line);border-radius:16px}
-.op.sel{border-color:var(--acc)}
-.op img{display:block;width:100%;height:130px;object-fit:cover;background:var(--line)}
-.op .ck{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:var(--acc-btn);color:var(--on-acc);display:none;place-content:center;font-weight:700;box-shadow:0 0 0 2px var(--surface)}
-.op.sel .ck{display:grid}
-.op b,.op span{display:block;padding:0 12px}
-.op b{margin-top:10px;font-weight:650}
-.op .v{font-size:.85rem;margin-top:2px}
-.op .d{font-size:.8rem;color:var(--ink2);margin-top:6px}
-.op .src{font-size:.7rem;color:var(--ink2);padding:8px 12px 10px}
 a{color:inherit}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .field{background:var(--page);border:1px solid var(--ring);border-radius:12px;padding:10px 12px;min-width:0}
@@ -223,7 +211,6 @@ const set = fn => { fn(S.days[cur] ||= {}); save(); };
 const plan = () => S.plan || DEF_PLAN;
 // O gün girilmediyse en son girilen kahvaltı saati geçerli olur.
 const ktOf = () => D().kt || S.days[Object.keys(S.days).filter(t => t < cur && S.days[t].kt).sort().at(-1)]?.kt || '10:00';
-let infos = [];
 const editPlan = fn => { S.plan ||= structuredClone(DEF_PLAN); fn(S.plan); S.plan.at = Date.now(); save(); };
 const status = t => $('sync').textContent = t;
 
@@ -295,35 +282,7 @@ const num = (label, field) => h('label', {}, h('input', {
 const olcum = () => h('section', {}, h('h2', {}, 'Ölçümler'), h('div', {className: 'tiles'},
   num('Sabah kilosu (kg)', 'kg'), num('Adım', 'adim'), num('Bel (cm)', 'bel')));
 
-function mealSection(m) {
-  const info = h('small', {});
-  const setInfo = () => { const o = OPS[D().meals?.[m.k]]; info.textContent = saatler(ktOf())[m.k] + ' · ' + (o ? `${o.kcal} kcal` : 'birini seç'); };
-  infos.push(setInfo);
-  const row = h('div', {className: 'ops'}, m.ops.map(o => {
-    const src = `https://thumb.wikimedia.org/wikipedia/commons/thumb/${o.f[0]}/${o.f[1]}/500px-${o.f[1]}`;
-    const on = D().meals?.[m.k] === o.id;
-    const b = h('button', {className: 'op' + (on ? ' sel' : ''), ariaPressed: on},
-      h('img', {src, alt: '', loading: 'lazy', onerror: e => e.target.style.visibility = 'hidden'}),
-      h('span', {className: 'ck', ariaHidden: true}, '✓'),
-      h('b', {}, o.ad), h('span', {className: 'v'}, `${o.kcal} kcal · ${o.p} g protein`), h('span', {className: 'd'}, o.ne),
-      h('span', {className: 'src'}, h('a', {href: 'https://commons.wikimedia.org/wiki/File:' + o.f[1], target: '_blank', rel: 'noopener', onclick: e => e.stopPropagation()}, 'Fotoğraf: Wikimedia Commons')));
-    // satırın yatay kaydırma konumu bozulmasın diye tüm sayfa yeniden çizilmiyor
-    b.onclick = () => {
-      const now = D().meals?.[m.k] !== o.id;
-      set(d => { d.meals ||= {}; now ? d.meals[m.k] = o.id : delete d.meals[m.k]; });
-      row.querySelectorAll('.op').forEach(x => { x.classList.toggle('sel', now && x === b); x.ariaPressed = now && x === b; });
-      setInfo(); re('ozet'); renderHead();
-    };
-    return b;
-  }));
-  setInfo();
-  return h('section', {}, h('h2', {}, m.ad, info),
-    m.k === 'kahvalti' && h('label', {className: 'kt'}, h('span', {}, 'Kahvaltı saati', h('div', {className: 'mut'}, 'Diğer öğünler buna göre kayar, ana öğün en geç 19:30')),
-      h('input', {className: 'field', type: 'time', value: ktOf(), onchange: e => { if (!e.target.value) return; set(d => d.kt = e.target.value); infos.forEach(f => f()); }})),
-    row);
-}
-
-const GEM_MODEL = 'gemini-4-hydrogen';
+const GEM_MODEL = 'gemini-2.5-flash';
 // Fotoğraf en fazla 1024 px JPEG'e küçültülür: istek küçük kalır, telefon fotoğrafı 20 MB sınırına takılmaz.
 async function kucult(file) {
   const bmp = await createImageBitmap(file), k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
@@ -356,7 +315,7 @@ function extraSection() {
   // Gemini yalnızca kutuları doldurur; kayıt, kullanıcı değerleri görüp "Ekle"ye basınca olur.
   const foto = h('input', {type: 'file', accept: 'image/*', hidden: true, onchange: () => fotoAd.textContent = foto.files[0] ? '📷 ✓' : '📷 Foto'});
   const fotoAd = h('span', {}, '📷 Foto'), durum = h('div', {className: 'mut', role: 'status', style: 'flex:1 1 100%'});
-  const sor = h('button', {className: 'btn', style: 'flex:1', onclick: async () => {
+  const sor = h('button', {className: 'btn pri', style: 'flex:1', onclick: async () => {
     if (!localStorage.diyetGem) return durum.textContent = 'Önce Ayarlar sekmesinden Gemini anahtarını gir.';
     if (!ad.value.trim() && !foto.files[0]) return durum.textContent = 'Ne yediğini yaz ya da fotoğraf seç.';
     sor.disabled = true; durum.textContent = 'Gemini hesaplıyor…';
@@ -366,11 +325,19 @@ function extraSection() {
     } catch (e) { durum.textContent = 'Gemini yanıt vermedi: ' + (e.message || e); }
     sor.disabled = false;
   }}, 'Gemini ile hesapla');
-  return h('section', {id: 'ekstra'}, h('h2', {}, 'Menü dışı', h('small', {}, 'elle gir ya da Gemini’ye sor')),
-    h('div', {className: 'row'}, ad, kc, pr, h('button', {className: 'btn pri', onclick: add}, 'Ekle')),
-    h('div', {className: 'row', style: 'margin-top:8px'}, h('label', {className: 'btn'}, foto, fotoAd), sor, durum),
-    h('ul', {className: 'list', style: 'margin-top:8px'}, (D().extra || []).map((x, i) => h('li', {}, h('span', {}, x.ad, h('div', {className: 'mut'}, `${x.kcal} kcal · ${x.p} g protein`)),
-      h('button', {className: 'btn x', ariaLabel: x.ad + ' sil', onclick: () => { set(d => d.extra.splice(i, 1)); re('ekstra'); re('ozet'); }}, '✕')))));
+  const saat = h('div', {className: 'mut'}), setSaat = () => { const t = saatler(ktOf()); saat.textContent = `Ara öğünler ${t.ara1} ve ${t.ara2}, ana öğün ${t.ana}`; };
+  setSaat();
+  const li = (x, sil) => h('li', {}, h('span', {}, x.ad, h('div', {className: 'mut'}, `${x.kcal} kcal · ${x.p} g protein`)),
+    h('button', {className: 'btn x', ariaLabel: x.ad + ' sil', onclick: () => { set(sil); re('ekstra'); re('ozet'); renderHead(); }}, '✕'));
+  return h('section', {id: 'ekstra'}, h('h2', {}, 'Öğünler', h('small', {}, 'yaz ya da fotoğraf seç')),
+    h('label', {className: 'kt'}, h('span', {}, 'Kahvaltı saati', saat),
+      h('input', {className: 'field', type: 'time', value: ktOf(), onchange: e => { if (!e.target.value) return; set(d => d.kt = e.target.value); setSaat(); }})),
+    h('div', {className: 'row'}, ad, h('label', {className: 'btn'}, foto, fotoAd), sor, durum),
+    h('div', {className: 'row', style: 'margin-top:8px'}, kc, pr, h('button', {className: 'btn pri', onclick: add}, 'Ekle')),
+    h('ul', {className: 'list', style: 'margin-top:8px'},
+      // eski menüden seçilmiş öğünler toplamda sayılmaya devam eder, buradan silinebilir
+      Object.entries(D().meals || {}).filter(([, id]) => OPS[id]).map(([k, id]) => li(OPS[id], d => delete d.meals[k])),
+      (D().extra || []).map((x, i) => li(x, d => d.extra.splice(i, 1)))));
 }
 
 /* ---------- Spor ---------- */
@@ -502,8 +469,7 @@ function gemSection() {
 }
 const hedefSection = () => h('section', {}, h('h2', {}, 'Hedefler', h('small', {}, 'Claude günceller')),
   h('ul', {className: 'list'}, [['Günlük kalori', C.kcal + ' kcal'], ['Günlük protein', C.p + ' g'], ['Günlük su', C.su / 1000 + ' L'], ['Hedef kilo', `${C.goalKg} kg, ${dateOf(C.goal).toLocaleDateString(TR, {day: 'numeric', month: 'long', year: 'numeric'})}`]]
-    .map(([a, b]) => h('li', {}, h('span', {}, a), h('b', {}, b)))),
-  h('p', {className: 'mut'}, 'Yemek fotoğrafları temsilidir, kaynak Wikimedia Commons.'));
+    .map(([a, b]) => h('li', {}, h('span', {}, a), h('b', {}, b)))));
 
 /* ---------- Çatı ---------- */
 const TABS = [
@@ -513,7 +479,7 @@ const TABS = [
   ['ayar', 'Ayarlar', '<path d="M4 7h8M18 7h2M4 17h2M12 17h8"/><circle cx="15" cy="7" r="2.5"/><circle cx="9" cy="17" r="2.5"/>']
 ];
 const VIEWS = {
-  bugun: () => (infos = [], [hero(), olcum(), ...MEALS.map(mealSection), extraSection()]),
+  bugun: () => [hero(), olcum(), extraSection()],
   spor: () => [sporToday(), sporPlan()],
   gidisat: () => [tiles(), chartSection(), weekStats(), reportSection()],
   ayar: () => [keySection(), gemSection(), hedefSection()]
