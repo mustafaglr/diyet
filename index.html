@@ -118,7 +118,7 @@ nav button[aria-current=page]{color:var(--acc-btn);font-weight:650}
 <main id="app"></main>
 <nav id="tabs" aria-label="Bölümler"></nav>
 <script>
-const BIN = '6af9d32bffd5d16053c35613', API = () => 'https://api.jsonbin.io/v3/b/' + (localStorage.diyetBin || BIN);
+const BIN = '6afc10dbac6210605a8e1a08', API = () => 'https://api.jsonbin.io/v3/b/' + (localStorage.diyetBin || BIN);
 // Varsayılan hedefler; Ayarlar'dan değiştirilince S.cfg içinde saklanır ve cihazlar arasında eşitlenir.
 const DEF_C = {kcal: 2000, p: 140, su: 3000, adim: 8000, start: '2026-11-15', startKg: 96, goal: '2027-05-15', goalKg: 82, son: '19:30'};
 const C = {...DEF_C};
@@ -242,9 +242,10 @@ async function jb(path, opt = {}) {
 }
 async function push() {
   try {
-    // JSONBin son sürümü okurken 500 verirse yine de yazılır: yeni sürüm okumayı düzeltir, yerel günler zaten korunur.
+    // JSONBin boş nesneleri atar; kayıt tümüyle boşalırsa son sürümü okumak 500 verir. Bu yüzden gövdede hep v alanı var,
+    // ve okuma 500 verirse yine de yazılır: dolu bir sürüm okumayı düzeltir, yerel günler zaten korunur.
     try { merge(await jb('/latest'), true); } catch (e) { if (e.status !== 500) throw e; }
-    await jb('', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(S)});
+    await jb('', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({v: 1, ...S})});
     localStorage.diyet = JSON.stringify(S); localStorage.removeItem('diyetDirty'); status('✓ Kaydedildi');
   } catch (e) { status('Kaydedilemedi (' + (e.message || e) + ')'); }
 }
