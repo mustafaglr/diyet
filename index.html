@@ -119,7 +119,9 @@ nav button[aria-current=page]{color:var(--acc-btn);font-weight:650}
 <nav id="tabs" aria-label="Bölümler"></nav>
 <script>
 const BIN = '6af9d32bffd5d16053c35613', API = 'https://api.jsonbin.io/v3/b/' + BIN;
-const C = {kcal: 2000, p: 140, su: 3000, start: '2026-11-15', startKg: 95.85, goal: '2027-05-15', goalKg: 82};
+// Varsayılan hedefler; Ayarlar'dan değiştirilince S.cfg içinde saklanır ve cihazlar arasında eşitlenir.
+const DEF_C = {kcal: 2000, p: 140, su: 3000, adim: 8000, start: '2026-11-15', startKg: 96, goal: '2027-05-15', goalKg: 82, son: '19:30'};
+const C = {...DEF_C};
 const TR = 'tr-TR';
 
 // Düzen: 2 ana öğün (kahvaltı ~600, ana öğün ~800 kcal) ve 2 ara öğün (~300 kcal). Toplam yaklaşık 2.000 kcal, 140 g protein.
@@ -184,13 +186,13 @@ const avg7 = (days, date) => {
   return mean(v);
 };
 // Öğün saatleri kahvaltıya göre kayar; ana öğün en geç 19:30, ara öğünler ikisinin arasına eşit dağılır.
-const LATEST = 19.5 * 60, hm = s => +s.slice(0, 2) * 60 + +s.slice(3), toHM = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+const hm = s => +s.slice(0, 2) * 60 + +s.slice(3), toHM = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 const saatler = kt => {
-  const b = hm(kt), d = Math.max(Math.min(b + 510, LATEST), b + 240), at = f => toHM(Math.round((b + (d - b) * f) / 15) * 15);
+  const b = hm(kt), d = Math.max(Math.min(b + 510, hm(C.son)), b + 240), at = f => toHM(Math.round((b + (d - b) * f) / 15) * 15);
   return {kahvalti: kt, ara1: at(1 / 3), ara2: at(2 / 3), ana: at(1)};
 };
-const T0 = +dateOf(C.start), T1 = +dateOf(C.goal);
-const planKg = t => C.startKg + (C.goalKg - C.startKg) * Math.min(1, Math.max(0, (+dateOf(t) - T0) / (T1 - T0)));
+const T0 = () => +dateOf(C.start), T1 = () => +dateOf(C.goal);
+const planKg = t => C.startKg + (C.goalKg - C.startKg) * Math.min(1, Math.max(0, (+dateOf(t) - T0()) / (T1() - T0())));
 const newer = (a, b) => ((a?.at || 0) >= (b?.at || 0) ? a : b) || undefined;
 console.assert(totals({meals: {a: 'k1', b: 'o1'}, extra: [{kcal: 100, p: 5}]}).kcal === 1500, 'totals');
 console.assert(avg7({'2026-01-07': {kg: 90}, '2026-01-05': {kg: 92}, '2025-12-31': {kg: 99}}, '2026-01-07') === 91, 'avg7');
@@ -206,6 +208,8 @@ const $ = id => document.getElementById(id);
 let S = {days: {}}, cur = TODAY, tab = 'bugun', openId = null, timer;
 try { S = JSON.parse(localStorage.diyet) || S; } catch {}
 S.days ||= {};
+const applyCfg = () => Object.assign(C, DEF_C, S.cfg);
+applyCfg();
 const D = () => S.days[cur] || {};
 const set = fn => { fn(S.days[cur] ||= {}); save(); };
 const plan = () => S.plan || DEF_PLAN;
@@ -223,27 +227,28 @@ function merge(remote, localWins) {
   if (!remote?.days) return;
   S.days = localWins ? {...remote.days, ...S.days} : remote.days;
   S.plan = newer(S.plan, remote.plan);
+  S.cfg = newer(S.cfg, remote.cfg); applyCfg();
 }
 // shortcut: gün bazında son yazan kazanır; iki cihazda aynı günü aynı anda düzenlersen biri ezilir, gerekirse alan bazlı birleştirmeye geç.
+// Kutu herkese açık ve anahtarsız yazmayı da kabul ediyor; anahtar reddedilirse (401) istek anahtarsız yinelenir.
+async function jb(path, opt = {}) {
+  const key = localStorage.diyetKey, go = k => fetch(API + path, {...opt, headers: {...opt.headers, ...(k && {'X-Master-Key': k})}});
+  let r = await go(key); if (r.status === 401 && key) r = await go();
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || r.status);
+  return (await r.json()).record;
+}
 async function push() {
-  const key = localStorage.diyetKey;
-  if (!key) return status('Anahtar yok: sadece bu cihazda');
   try {
-    const hd = {'X-Master-Key': key};
-    const r = await fetch(API + '/latest', {headers: hd}); if (!r.ok) throw r.status;
-    merge((await r.json()).record, true);
-    const w = await fetch(API, {method: 'PUT', headers: {...hd, 'Content-Type': 'application/json'}, body: JSON.stringify(S)});
-    if (!w.ok) throw w.status;
+    merge(await jb('/latest'), true);
+    await jb('', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(S)});
     localStorage.diyet = JSON.stringify(S); localStorage.removeItem('diyetDirty'); status('✓ Kaydedildi');
   } catch (e) { status('Kaydedilemedi (' + (e.message || e) + ')'); }
 }
 async function load() {
   render();
   try {
-    const key = localStorage.diyetKey;
-    const r = await fetch(API + '/latest', key ? {headers: {'X-Master-Key': key}} : {}); if (!r.ok) throw r.status;
-    merge((await r.json()).record, !!localStorage.diyetDirty);
-    status(key ? '✓ Eşitlendi' : 'Anahtar yok: sadece okuma');
+    merge(await jb('/latest'), !!localStorage.diyetDirty);
+    status('✓ Eşitlendi');
     render();
     if (localStorage.diyetDirty) push();
   } catch (e) { status('Çevrimdışı (' + (e.message || e) + ')'); }
@@ -269,7 +274,7 @@ function hero() {
       h('div', {className: 'stat'}, h('div', {className: 'l'}, 'Yenilen'), h('div', {className: 'v'}, t.kcal, h('small', {}, ` / ${C.kcal} kcal`))),
       h('div', {className: 'stat'}, h('div', {className: 'l'}, 'Protein'), h('div', {className: 'v'}, t.p, h('small', {}, ` / ${C.p} g`)), meter(t.p, C.p, 'Protein')))),
     h('div', {className: 'stat sep'}, h('div', {className: 'l'}, 'Su, her kutu 250 ml'), h('div', {className: 'v'}, fmt(su / 1000, 2), h('small', {}, ` / ${C.su / 1000} L`)),
-      h('div', {className: 'water', role: 'group', ariaLabel: 'Su'}, Array.from({length: 12}, (_, i) => {
+      h('div', {className: 'water', role: 'group', ariaLabel: 'Su'}, Array.from({length: Math.ceil(C.su / 250)}, (_, i) => {
         const v = (i + 1) * 250;
         return h('button', {className: su >= v ? 'full' : '', ariaLabel: v + ' ml', ariaPressed: su >= v, onclick: () => { set(d => d.su = d.su === v ? v - 250 : v); re('ozet'); }});
       }))));
@@ -375,18 +380,18 @@ function tiles() {
     tile('Güncel, 7 gün ortalaması', a == null ? '–' : fmt(a) + ' kg', `başlangıç ${fmt(C.startKg, 2)} kg`),
     tile('Verilen', a == null ? '–' : fmt(C.startKg - a) + ' kg', a == null ? 'kilo girince hesaplanır' : `kalan ${fmt(Math.max(0, a - C.goalKg))} kg`),
     tile('Plana göre', diff == null ? '–' : fmt(Math.abs(diff)) + ' kg', diff == null ? '' : diff <= 0.05 ? '▼ planın önünde' : '▲ planın gerisinde', diff == null ? '' : diff <= 0.05 ? 'good' : 'bad'),
-    tile('Bugün olması gereken', fmt(planKg(TODAY)) + ' kg', 'haftada yaklaşık 0,5 kg')));
+    tile('Bugün olması gereken', fmt(planKg(TODAY)) + ' kg', `haftada yaklaşık ${fmt((C.startKg - C.goalKg) / ((T1() - T0()) / 6048e5))} kg`)));
 }
 function chartSection() {
   const pts = Object.entries(S.days).filter(([, d]) => d.kg).map(([t, d]) => [t, +d.kg, avg7(S.days, t)]).sort();
   // viewBox ekran genişliğine eşit tutulur ki eksen yazıları telefonda küçülmesin
   const W = Math.max(280, Math.min(686, innerWidth - 66)), H = 240, L = 30, R = 46, T = 12, B = 24;
   const kgs = [C.startKg, C.goalKg, ...pts.map(p => p[1])], lo = Math.floor(Math.min(...kgs) - 1), hi = Math.ceil(Math.max(...kgs) + 1);
-  const x = t => L + (W - L - R) * Math.min(1, Math.max(0, (+dateOf(t) - T0) / (T1 - T0)));
+  const x = t => L + (W - L - R) * Math.min(1, Math.max(0, (+dateOf(t) - T0()) / (T1() - T0())));
   const y = kg => T + (H - T - B) * (hi - kg) / (hi - lo);
   let grid = '', months = '';
   for (let k = Math.ceil(lo / 5) * 5; k <= hi; k += 5) grid += `<line x1="${L}" x2="${W - R}" y1="${y(k)}" y2="${y(k)}" stroke="var(--line)"/><text x="${L - 6}" y="${y(k) + 4}" text-anchor="end">${k}</text>`;
-  for (let d = new Date(dateOf(C.start).getFullYear(), dateOf(C.start).getMonth() + 1, 1, 12); +d <= T1; d.setMonth(d.getMonth() + 1))
+  for (let d = new Date(dateOf(C.start).getFullYear(), dateOf(C.start).getMonth() + 1, 1, 12); +d <= T1(); d.setMonth(d.getMonth() + 1))
     months += `<text x="${x(iso(d))}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString(TR, {month: 'short'})}</text>`;
   const last = pts.at(-1);
   const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kilo grafiği: günlük tartı, 7 günlük ortalama ve hedef planı" font-size="11" fill="var(--mut)" style="font-variant-numeric:tabular-nums">
@@ -429,7 +434,7 @@ function weekStats() {
     tile('Ortalama kalori', kc == null ? '–' : Math.round(kc) + ' kcal', `hedef ${C.kcal}`),
     tile('Ortalama protein', pr == null ? '–' : Math.round(pr) + ' g', `hedef ${C.p}`),
     tile('Antrenman', ds.filter(d => d.sporOk).length + ' / ' + hedefGun, 'tamamlanan / planlanan'),
-    tile('Ortalama adım', ad == null ? '–' : Math.round(ad).toLocaleString(TR), 'hedef 7.000-8.000')));
+    tile('Ortalama adım', ad == null ? '–' : Math.round(ad).toLocaleString(TR), 'hedef ' + C.adim.toLocaleString(TR))));
 }
 function report() {
   const lines = [], P = plan();
@@ -453,7 +458,7 @@ function reportSection() {
 function keySection() {
   const key = h('input', {className: 'field', type: 'password', placeholder: 'X-Master-Key', ariaLabel: 'JSONBin anahtarı', autocomplete: 'off', value: localStorage.diyetKey || '', style: 'flex:1'});
   return h('section', {}, h('h2', {}, 'Eşitleme'),
-    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar JSONBin kutusunda tutulur. Yazabilmek için anahtarını her cihazda bir kez gir. Anahtar yalnızca bu cihazın tarayıcısında saklanır, sayfanın koduna yazılmaz.'),
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar JSONBin kutusunda tutulur ve anahtar olmadan da kaydedilir. Anahtar girersen önce onunla denenir; yalnızca bu cihazın tarayıcısında saklanır.'),
     h('div', {className: 'row'}, key, h('button', {className: 'btn pri', onclick: () => {
       key.value.trim() ? localStorage.diyetKey = key.value.trim() : localStorage.removeItem('diyetKey'); localStorage.diyetDirty = '1'; load();
     }}, 'Kaydet')));
@@ -470,9 +475,22 @@ function gemSection() {
       ok.textContent = (key.value.trim() ? '✓ Kaydedildi' : 'Anahtar silindi') + ', model: ' + (localStorage.diyetGemModel || GEM_MODEL);
     }}, 'Kaydet')), ok);
 }
-const hedefSection = () => h('section', {}, h('h2', {}, 'Hedefler', h('small', {}, 'Claude günceller')),
-  h('ul', {className: 'list'}, [['Günlük kalori', C.kcal + ' kcal'], ['Günlük protein', C.p + ' g'], ['Günlük su', C.su / 1000 + ' L'], ['Hedef kilo', `${C.goalKg} kg, ${dateOf(C.goal).toLocaleDateString(TR, {day: 'numeric', month: 'long', year: 'numeric'})}`]]
-    .map(([a, b]) => h('li', {}, h('span', {}, a), h('b', {}, b)))));
+function hedefSection() {
+  const F = [['kcal', 'Günlük kalori (kcal)'], ['p', 'Günlük protein (g)'], ['su', 'Günlük su (ml)'], ['adim', 'Günlük adım'], ['startKg', 'Başlangıç kilosu (kg)'], ['start', 'Başlangıç tarihi', 'date'],
+    ['goalKg', 'Hedef kilo (kg)'], ['goal', 'Hedef tarihi', 'date'], ['son', 'Ana öğün en geç', 'time']];
+  const ins = F.map(([k, ad, type]) => h('input', {className: 'field', ariaLabel: ad, style: 'width:9.5em;text-align:right', ...(type ? {type, value: C[k]} : {inputMode: 'decimal', value: String(C[k]).replace('.', ',')})}));
+  const ok = h('p', {className: 'mut', role: 'status'});
+  return h('section', {}, h('h2', {}, 'Hedefler'),
+    h('ul', {className: 'list'}, F.map(([, ad], i) => h('li', {}, h('span', {}, ad), ins[i]))),
+    h('div', {className: 'row', style: 'margin-top:12px'},
+      h('button', {className: 'btn pri', onclick: () => {
+        const n = {};
+        for (const [i, [k, ad, type]] of F.entries()) { n[k] = type ? ins[i].value : sayi(ins[i].value); if (!n[k]) return ok.textContent = ad + ' geçersiz.'; }
+        if (n.goal <= n.start) return ok.textContent = 'Hedef tarihi başlangıçtan sonra olmalı.';
+        S.cfg = {...n, at: Date.now()}; applyCfg(); save(); ok.textContent = '✓ Kaydedildi';
+      }}, 'Kaydet'),
+      h('button', {className: 'btn', onclick: () => { S.cfg = {at: Date.now()}; applyCfg(); save(); render(); }}, 'Varsayılana dön')), ok);
+}
 
 /* ---------- Çatı ---------- */
 const TABS = [
