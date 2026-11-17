@@ -210,6 +210,8 @@ console.assert(addDays('2026-12-31', 1) === '2027-01-01' && monday('2026-11-15')
 console.assert(planKg(C.start) === C.startKg && planKg(C.goal) === C.goalKg, 'planKg');
 console.assert(JSON.stringify(saatler('10:00')) === '{"kahvalti":"10:00","ara1":"12:45","ara2":"15:45","ana":"18:30"}' && JSON.stringify(saatler('12:00')) === '{"kahvalti":"12:00","ara1":"14:30","ara2":"17:00","ana":"19:30"}', 'saatler');
 console.assert(newer({at: 2}, {at: 5}).at === 5 && newer(undefined, {at: 1}).at === 1, 'newer');
+const sayi = s => { const n = parseFloat(String(s).trim().replace(',', '.')); return n >= 0 ? n : null; };
+console.assert(sayi('95,4') === 95.4 && sayi('95.4') === 95.4 && sayi(' 8000 ') === 8000 && sayi('') === null && sayi('abc') === null, 'sayi');
 
 const TODAY = iso(new Date());
 const $ = id => document.getElementById(id);
@@ -285,12 +287,13 @@ function hero() {
         return h('button', {className: su >= v ? 'full' : '', ariaLabel: v + ' ml', ariaPressed: su >= v, onclick: () => { set(d => d.su = d.su === v ? v - 250 : v); re('ozet'); }});
       }))));
 }
-const num = (label, field, step, ph) => h('label', {}, h('input', {
-  type: 'number', inputMode: 'decimal', step, placeholder: ph || '–', value: D()[field] ?? '',
+// type=number bazı tarayıcılarda virgülü reddediyor; metin kutusu hem virgülü hem noktayı kabul eder.
+const num = (label, field) => h('label', {}, h('input', {
+  type: 'text', inputMode: 'decimal', placeholder: '–', value: String(D()[field] ?? '').replace('.', ','),
   // odak kaybolmasın diye burada sayfa yeniden çizilmiyor
-  onchange: e => { set(d => e.target.value === '' ? delete d[field] : d[field] = +e.target.value); renderHead(); }}), label);
+  onchange: e => { const v = sayi(e.target.value); set(d => v == null ? delete d[field] : d[field] = v); e.target.value = v == null ? '' : String(v).replace('.', ','); renderHead(); }}), label);
 const olcum = () => h('section', {}, h('h2', {}, 'Ölçümler'), h('div', {className: 'tiles'},
-  num('Sabah kilosu (kg)', 'kg', '0.05'), num('Adım', 'adim', '100'), num('Bel (cm)', 'bel', '0.5')));
+  num('Sabah kilosu (kg)', 'kg'), num('Adım', 'adim'), num('Bel (cm)', 'bel')));
 
 function mealSection(m) {
   const info = h('small', {});
@@ -320,13 +323,52 @@ function mealSection(m) {
     row);
 }
 
+const GEM_MODEL = 'gemini-4-hydrogen';
+// Fotoğraf en fazla 1024 px JPEG'e küçültülür: istek küçük kalır, telefon fotoğrafı 20 MB sınırına takılmaz.
+async function kucult(file) {
+  const bmp = await createImageBitmap(file), k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+  const c = Object.assign(document.createElement('canvas'), {width: bmp.width * k, height: bmp.height * k});
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', .8).split(',')[1];
+}
+const gemParse = j => {
+  const o = JSON.parse((j.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join(''));
+  return {ad: String(o.ad), kcal: Math.round(sayi(o.kcal)), p: Math.round(sayi(o.p) || 0)};
+};
+console.assert(JSON.stringify(gemParse({candidates: [{content: {parts: [{thought: true, text: 'x'}, {text: '{"ad":"Mercimek çorbası, 1 kase","kcal":180.4,"p":"9"}'}]}}]})) === '{"ad":"Mercimek çorbası, 1 kase","kcal":180,"p":9}', 'gemParse');
+async function gemini(text, file) {
+  const parts = [{text: 'Diyetisyen gibi davran. Kullanıcının yediği şeyin TOPLAM kalorisini (kcal) ve proteinini (gram) tahmin et. Porsiyon belirtilmediyse fotoğraftan ya da standart Türk porsiyonundan tahmin et; emin değilsen biraz yüksek tarafı seç. "ad": kısa Türkçe ad ve porsiyon (örnek: "İskender, 1 porsiyon"). Yiyecek yoksa kcal 0 ver.\n\nKullanıcı: ' + (text || '(fotoğrafa bak)')}];
+  if (file) parts.push({inline_data: {mime_type: 'image/jpeg', data: await kucult(file)}});
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEM_MODEL}:generateContent`, {
+    method: 'POST', headers: {'x-goog-api-key': localStorage.diyetGem, 'Content-Type': 'application/json'},
+    body: JSON.stringify({contents: [{parts}], generationConfig: {responseMimeType: 'application/json',
+      responseSchema: {type: 'OBJECT', properties: {ad: {type: 'STRING'}, kcal: {type: 'INTEGER'}, p: {type: 'INTEGER'}}, required: ['ad', 'kcal', 'p']}}})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error?.message || r.status);
+  return gemParse(j);
+}
+
 function extraSection() {
   const ad = h('input', {className: 'field', placeholder: 'Ne yedin?', ariaLabel: 'Ne yedin', style: 'flex:1 1 100%'});
-  const kc = h('input', {className: 'field', type: 'number', inputMode: 'numeric', placeholder: 'kcal', ariaLabel: 'Kalori', style: 'flex:1;width:0'});
-  const pr = h('input', {className: 'field', type: 'number', inputMode: 'numeric', placeholder: 'protein g', ariaLabel: 'Protein', style: 'flex:1;width:0'});
-  const add = () => { if (!ad.value.trim() || kc.value === '') return; set(d => (d.extra ||= []).push({ad: ad.value.trim(), kcal: +kc.value, p: +pr.value || 0})); re('ekstra'); re('ozet'); renderHead(); };
-  return h('section', {id: 'ekstra'}, h('h2', {}, 'Menü dışı', h('small', {}, "değerleri Claude'dan al")),
+  const kc = h('input', {className: 'field', inputMode: 'decimal', placeholder: 'kcal', ariaLabel: 'Kalori', style: 'flex:1;width:0'});
+  const pr = h('input', {className: 'field', inputMode: 'decimal', placeholder: 'protein g', ariaLabel: 'Protein', style: 'flex:1;width:0'});
+  const add = () => { const k = sayi(kc.value); if (!ad.value.trim() || k == null) return; set(d => (d.extra ||= []).push({ad: ad.value.trim(), kcal: Math.round(k), p: Math.round(sayi(pr.value) || 0)})); re('ekstra'); re('ozet'); renderHead(); };
+  // Gemini yalnızca kutuları doldurur; kayıt, kullanıcı değerleri görüp "Ekle"ye basınca olur.
+  const foto = h('input', {type: 'file', accept: 'image/*', hidden: true, onchange: () => fotoAd.textContent = foto.files[0] ? '📷 ✓' : '📷 Foto'});
+  const fotoAd = h('span', {}, '📷 Foto'), durum = h('div', {className: 'mut', role: 'status', style: 'flex:1 1 100%'});
+  const sor = h('button', {className: 'btn', style: 'flex:1', onclick: async () => {
+    if (!localStorage.diyetGem) return durum.textContent = 'Önce Ayarlar sekmesinden Gemini anahtarını gir.';
+    if (!ad.value.trim() && !foto.files[0]) return durum.textContent = 'Ne yediğini yaz ya da fotoğraf seç.';
+    sor.disabled = true; durum.textContent = 'Gemini hesaplıyor…';
+    try {
+      const r = await gemini(ad.value.trim(), foto.files[0]);
+      ad.value = r.ad; kc.value = r.kcal; pr.value = r.p; durum.textContent = 'Tahmin geldi. Değerleri kontrol et, sonra "Ekle"ye bas.';
+    } catch (e) { durum.textContent = 'Gemini yanıt vermedi: ' + (e.message || e); }
+    sor.disabled = false;
+  }}, 'Gemini ile hesapla');
+  return h('section', {id: 'ekstra'}, h('h2', {}, 'Menü dışı', h('small', {}, 'elle gir ya da Gemini’ye sor')),
     h('div', {className: 'row'}, ad, kc, pr, h('button', {className: 'btn pri', onclick: add}, 'Ekle')),
+    h('div', {className: 'row', style: 'margin-top:8px'}, h('label', {className: 'btn'}, foto, fotoAd), sor, durum),
     h('ul', {className: 'list', style: 'margin-top:8px'}, (D().extra || []).map((x, i) => h('li', {}, h('span', {}, x.ad, h('div', {className: 'mut'}, `${x.kcal} kcal · ${x.p} g protein`)),
       h('button', {className: 'btn x', ariaLabel: x.ad + ' sil', onclick: () => { set(d => d.extra.splice(i, 1)); re('ekstra'); re('ozet'); }}, '✕')))));
 }
@@ -449,6 +491,15 @@ function keySection() {
       key.value.trim() ? localStorage.diyetKey = key.value.trim() : localStorage.removeItem('diyetKey'); localStorage.diyetDirty = '1'; load();
     }}, 'Kaydet')));
 }
+function gemSection() {
+  const key = h('input', {className: 'field', type: 'password', placeholder: 'Gemini API anahtarı', ariaLabel: 'Gemini API anahtarı', autocomplete: 'off', value: localStorage.diyetGem || '', style: 'flex:1'});
+  const ok = h('p', {className: 'mut', role: 'status', style: 'margin:8px 0 0'});
+  return h('section', {}, h('h2', {}, 'Gemini ile kalori tahmini'),
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Anahtarı aistudio.google.com adresinden ücretsiz alabilirsin. Yalnızca bu cihazın tarayıcısında saklanır. Yazdığın metin ve seçtiğin fotoğraf Google’a gönderilir.'),
+    h('div', {className: 'row'}, key, h('button', {className: 'btn pri', onclick: () => {
+      key.value.trim() ? localStorage.diyetGem = key.value.trim() : localStorage.removeItem('diyetGem'); ok.textContent = key.value.trim() ? '✓ Kaydedildi' : 'Anahtar silindi';
+    }}, 'Kaydet')), ok);
+}
 const hedefSection = () => h('section', {}, h('h2', {}, 'Hedefler', h('small', {}, 'Claude günceller')),
   h('ul', {className: 'list'}, [['Günlük kalori', C.kcal + ' kcal'], ['Günlük protein', C.p + ' g'], ['Günlük su', C.su / 1000 + ' L'], ['Hedef kilo', `${C.goalKg} kg, ${dateOf(C.goal).toLocaleDateString(TR, {day: 'numeric', month: 'long', year: 'numeric'})}`]]
     .map(([a, b]) => h('li', {}, h('span', {}, a), h('b', {}, b)))),
@@ -465,7 +516,7 @@ const VIEWS = {
   bugun: () => (infos = [], [hero(), olcum(), ...MEALS.map(mealSection), extraSection()]),
   spor: () => [sporToday(), sporPlan()],
   gidisat: () => [tiles(), chartSection(), weekStats(), reportSection()],
-  ayar: () => [keySection(), hedefSection()]
+  ayar: () => [keySection(), gemSection(), hedefSection()]
 };
 const BUILD = {ozet: hero, ekstra: extraSection, sporBugun: sporToday, sporPlan};
 const re = id => $(id)?.replaceWith(BUILD[id]());
