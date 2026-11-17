@@ -222,7 +222,6 @@ function save() {
   localStorage.diyet = JSON.stringify(S); localStorage.diyetDirty = '1';
   clearTimeout(timer); timer = setTimeout(push, 1500);
 }
-// Kutunun tamamı bu sayfaya aittir; içinde başka biçimde veri varsa ilk kayıtta ezilir.
 function merge(remote, localWins) {
   if (!remote?.days) return;
   // Yalnızca bu cihazda olan günler asla silinmez; aynı gün iki yerde varsa localWins belirler.
@@ -240,23 +239,27 @@ async function jb(path, opt = {}) {
   if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).message || r.status), {status: r.status});
   return (await r.json()).record;
 }
-async function push() {
+// Kutu ortaktır; her kişinin kayıtları users[profil kodu] altında durur, böylece kimse başkasının verisini görmez ya da ezmez.
+// Kod ilk açılışta rastgele üretilir; aynı kişi başka cihazında aynı kodu yazarak kayıtlarını birleştirir.
+const kod = () => localStorage.diyetKod ||= crypto.randomUUID().slice(0, 8);
+// JSONBin boş nesneleri atar ve tümüyle boş kayıt okunamaz hale gelir (500); bu yüzden gövdede hep v alanı var.
+// Okuma başarısızsa yazılmaz: aksi halde diğer kişilerin kayıtları ezilirdi.
+async function push(birlestir = true) {
   try {
-    // JSONBin boş nesneleri atar; kayıt tümüyle boşalırsa son sürümü okumak 500 verir. Bu yüzden gövdede hep v alanı var,
-    // ve okuma 500 verirse yine de yazılır: dolu bir sürüm okumayı düzeltir, yerel günler zaten korunur.
-    try { merge(await jb('/latest'), true); } catch (e) { if (e.status !== 500) throw e; }
-    await jb('', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({v: 1, ...S})});
+    const R = await jb('/latest');
+    if (birlestir) merge(R.users?.[kod()], true);
+    await jb('', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...R, v: 1, users: {...R.users, [kod()]: S}})}); // ...R: eski, koda bağlı olmayan kayıtlar silinmesin
     localStorage.diyet = JSON.stringify(S); localStorage.removeItem('diyetDirty'); status('✓ Kaydedildi');
   } catch (e) { status('Kaydedilemedi (' + (e.message || e) + ')'); }
 }
 async function load() {
   render();
   try {
-    merge(await jb('/latest'), !!localStorage.diyetDirty);
+    merge((await jb('/latest')).users?.[kod()], !!localStorage.diyetDirty);
     status('✓ Eşitlendi');
     render();
     if (localStorage.diyetDirty) push();
-  } catch (e) { status('Okunamadı (' + (e.message || e) + ')'); if (localStorage.diyetDirty) push(); }
+  } catch (e) { status('Okunamadı (' + (e.message || e) + ')'); }
 }
 
 function h(tag, props, ...kids) {
@@ -336,20 +339,40 @@ async function gemModeller() {
 // Modeller aynı API'yi desteklemiyor: sırayla şemalı generateContent, şemasız generateContent ve Interactions API denenir.
 async function gemini(text, file) {
   const soru = 'Diyetisyen gibi davran. Kullanıcının yediği şeyin TOPLAM kalorisini (kcal) ve proteinini (gram) tahmin et. Porsiyon belirtilmediyse fotoğraftan ya da standart Türk porsiyonundan tahmin et; emin değilsen biraz yüksek tarafı seç. Yiyecek yoksa kcal 0 ver. Yalnızca şu biçimde JSON döndür: {"ad": "kısa Türkçe ad ve porsiyon, örnek: İskender, 1 porsiyon", "kcal": tam sayı, "p": tam sayı}\n\nKullanıcı: ' + (text || '(fotoğrafa bak)');
-  const img = file && await kucult(file), m = encodeURIComponent(localStorage.diyetGemModel || GEM_MODEL), ver = localStorage.diyetGemVer || 'v1beta';
+  const img = file && await kucult(file);
   const sema = up => { const T = x => up ? x.toUpperCase() : x; return {type: T('object'), properties: {ad: {type: T('string')}, kcal: {type: T('integer')}, p: {type: T('integer')}}, required: ['ad', 'kcal', 'p']}; };
-  const gc = cfg => () => gemFetch(`${ver}/models/${m}:generateContent`, {contents: [{parts: [{text: soru}, ...(img ? [{inline_data: {mime_type: 'image/jpeg', data: img}}] : [])]}], ...cfg});
-  const yollar = [
-    ['generateContent', gc({generationConfig: {responseMimeType: 'application/json', responseSchema: sema(true)}})],
-    ['generateContent, şemasız', gc({})],
-    ['interactions', () => gemFetch('v1beta/interactions', {model: decodeURIComponent(m), input: [{type: 'text', text: soru}, ...(img ? [{type: 'image', data: img, mime_type: 'image/jpeg'}] : [])],
-      response_format: {type: 'text', mime_type: 'application/json', schema: sema(false)}}, {'Api-Revision': '2026-05-20'})]];
-  const hata = [];
-  for (const [ad, f] of yollar) {
-    try { return gemParse(await f()); }
-    catch (e) { hata.push(ad + ': ' + (e.message || e)); if ([401, 403, 429].includes(e.status) || /API key/i.test(e.message)) break; } // anahtar ya da kota hatasında diğer yolları denemek anlamsız
+  const dene = async ({id, ver}) => {
+    const gc = cfg => () => gemFetch(`${ver}/models/${encodeURIComponent(id)}:generateContent`, {contents: [{parts: [{text: soru}, ...(img ? [{inline_data: {mime_type: 'image/jpeg', data: img}}] : [])]}], ...cfg});
+    const yollar = [
+      ['generateContent', gc({generationConfig: {responseMimeType: 'application/json', responseSchema: sema(true)}})],
+      ['generateContent, şemasız', gc({})],
+      ['interactions', () => gemFetch('v1beta/interactions', {model: id, input: [{type: 'text', text: soru}, ...(img ? [{type: 'image', data: img, mime_type: 'image/jpeg'}] : [])],
+        response_format: {type: 'text', mime_type: 'application/json', schema: sema(false)}}, {'Api-Revision': '2026-05-20'})]];
+    const hata = []; let anahtar = false;
+    for (const [ad, f] of yollar) {
+      try { return gemParse(await f()); }
+      catch (e) {
+        hata.push(ad + ': ' + (e.message || e));
+        anahtar = [401, 403].includes(e.status) || /API key/i.test(e.message);
+        // anahtar, kota ya da "model kullanılamıyor" hatasında aynı modelin diğer yollarını denemek anlamsız
+        if (anahtar || e.status === 429 || /no longer available|is not found/i.test(e.message)) break;
+      }
+    }
+    throw Object.assign(new Error(id + ' → ' + hata.join(' | ')), {anahtar});
+  };
+  const cur = {id: localStorage.diyetGemModel || GEM_MODEL, ver: localStorage.diyetGemVer || 'v1beta'};
+  try { return await dene(cur); }
+  catch (e) {
+    if (e.anahtar) throw e;
+    // Seçili model çalışmıyor (kaldırılmış, yeni kullanıcılara kapalı ya da kotası yok): listedeki Flash modelleri yeniden eskiye denenir, çalışan kaydedilir.
+    let L = []; try { L = JSON.parse(localStorage.diyetGemList) || []; } catch {}
+    if (!L.length) { L = await gemModeller().catch(() => []); localStorage.diyetGemList = JSON.stringify(L); }
+    for (const m of L.filter(m => m.id !== cur.id && /flash/.test(m.id)).sort((a, b) => b.id.localeCompare(a.id, undefined, {numeric: true})).slice(0, 8)) {
+      try { const r = await dene(m); localStorage.diyetGemModel = m.id; localStorage.diyetGemVer = m.ver; return {...r, model: m.id}; }
+      catch (x) { if (x.anahtar) throw x; }
+    }
+    throw e;
   }
-  throw new Error(hata.join(' | '));
 }
 
 function extraSection() {
@@ -366,7 +389,7 @@ function extraSection() {
     sor.disabled = true; durum.textContent = 'Gemini hesaplıyor…';
     try {
       const r = await gemini(ad.value.trim(), foto.files[0]);
-      ad.value = r.ad; kc.value = r.kcal; pr.value = r.p; durum.textContent = 'Tahmin geldi. Değerleri kontrol et, sonra "Ekle"ye bas.';
+      ad.value = r.ad; kc.value = r.kcal; pr.value = r.p; durum.textContent = (r.model ? `Seçili model çalışmadı, ${r.model} modeline geçildi. ` : '') + 'Tahmin geldi. Değerleri kontrol et, sonra "Ekle"ye bas.';
     } catch (e) { durum.textContent = 'Gemini yanıt vermedi: ' + (e.message || e); }
     sor.disabled = false;
   }}, 'Gemini ile hesapla');
@@ -498,11 +521,14 @@ function reportSection() {
 
 /* ---------- Ayarlar ---------- */
 function keySection() {
-  const key = h('input', {className: 'field', type: 'password', placeholder: 'X-Master-Key', ariaLabel: 'JSONBin anahtarı', autocomplete: 'off', value: localStorage.diyetKey || '', style: 'flex:1 1 100%'});
+  const pk = h('input', {className: 'field', ariaLabel: 'Profil kodu', autocomplete: 'off', autocapitalize: 'off', spellcheck: false, value: kod(), style: 'flex:1 1 100%'});
+  const key = h('input', {className: 'field', type: 'password', placeholder: 'JSONBin anahtarı (isteğe bağlı)', ariaLabel: 'JSONBin anahtarı', autocomplete: 'off', value: localStorage.diyetKey || '', style: 'flex:1 1 100%'});
   const bin = h('input', {className: 'field', placeholder: 'Kutu kimliği: ' + BIN, ariaLabel: 'JSONBin kutu kimliği', autocomplete: 'off', autocapitalize: 'off', spellcheck: false, value: localStorage.diyetBin || '', style: 'flex:1 1 100%'});
   return h('section', {}, h('h2', {}, 'Eşitleme'),
-    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar JSONBin kutusunda tutulur. Anahtar (Master Key ya da Access Key) girersen önce onunla denenir. Başka bir kutu kullanmak için kimliğini yaz; boş bırakırsan varsayılan kutu kullanılır. İkisi de yalnızca bu cihazda saklanır.'),
-    h('div', {className: 'row'}, key, bin, h('button', {className: 'btn pri', onclick: () => {
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtların bu profil koduyla saklanır; kodu bilmeyen biri onları sayfada göremez. Başka bir cihazında aynı kayıtları görmek için o cihaza bu kodu yaz. Kodu kimseyle paylaşma.'),
+    h('label', {className: 'mut'}, 'Profil kodu'), h('div', {className: 'row', style: 'margin-top:4px'}, pk, key, bin, h('button', {className: 'btn pri', onclick: () => {
+      if (pk.value.trim().length < 6) return status('Profil kodu en az 6 karakter olmalı');
+      localStorage.diyetKod = pk.value.trim();
       key.value.trim() ? localStorage.diyetKey = key.value.trim() : localStorage.removeItem('diyetKey');
       bin.value.trim() ? localStorage.diyetBin = bin.value.trim() : localStorage.removeItem('diyetBin'); localStorage.diyetDirty = '1'; load();
     }}, 'Kaydet')));
@@ -519,7 +545,11 @@ function yedekSection() {
       h('button', {className: 'btn', onclick: () => {
         try { const r = JSON.parse(ta.value); if (!r.days) throw 0; merge(r, false); save(); ok.textContent = '✓ Yedek yüklendi'; }
         catch { ok.textContent = 'Bu metin geçerli bir yedek değil.'; }
-      }}, 'Yedekten yükle')), ok);
+      }}, 'Yedekten yükle'),
+      h('button', {className: 'btn', onclick: () => {
+        if (!confirm('Bu profildeki tüm kayıtlar hem bu cihazdan hem kutudan silinecek. Geri alınamaz. Devam edilsin mi?')) return;
+        clearTimeout(timer); S = {days: {}}; applyCfg(); localStorage.diyet = JSON.stringify(S); push(false); render();
+      }}, 'Tüm kayıtlarımı sil')), ok);
 }
 function gemSection() {
   const key = h('input', {className: 'field', type: 'password', placeholder: 'Gemini API anahtarı', ariaLabel: 'Gemini API anahtarı', autocomplete: 'off', value: localStorage.diyetGem || '', style: 'flex:1 1 100%'});
