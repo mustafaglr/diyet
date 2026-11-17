@@ -118,7 +118,7 @@ nav button[aria-current=page]{color:var(--acc-btn);font-weight:650}
 <main id="app"></main>
 <nav id="tabs" aria-label="Bölümler"></nav>
 <script>
-const BIN = '6af9d32bffd5d16053c35613', API = 'https://api.jsonbin.io/v3/b/' + BIN;
+const BIN = '6af9d32bffd5d16053c35613', API = () => 'https://api.jsonbin.io/v3/b/' + (localStorage.diyetBin || BIN);
 // Varsayılan hedefler; Ayarlar'dan değiştirilince S.cfg içinde saklanır ve cihazlar arasında eşitlenir.
 const DEF_C = {kcal: 2000, p: 140, su: 3000, adim: 8000, start: '2026-11-15', startKg: 96, goal: '2027-05-15', goalKg: 82, son: '19:30'};
 const C = {...DEF_C};
@@ -225,21 +225,25 @@ function save() {
 // Kutunun tamamı bu sayfaya aittir; içinde başka biçimde veri varsa ilk kayıtta ezilir.
 function merge(remote, localWins) {
   if (!remote?.days) return;
-  S.days = localWins ? {...remote.days, ...S.days} : remote.days;
+  // Yalnızca bu cihazda olan günler asla silinmez; aynı gün iki yerde varsa localWins belirler.
+  S.days = localWins ? {...remote.days, ...S.days} : {...S.days, ...remote.days};
   S.plan = newer(S.plan, remote.plan);
   S.cfg = newer(S.cfg, remote.cfg); applyCfg();
 }
 // shortcut: gün bazında son yazan kazanır; iki cihazda aynı günü aynı anda düzenlersen biri ezilir, gerekirse alan bazlı birleştirmeye geç.
-// Kutu herkese açık ve anahtarsız yazmayı da kabul ediyor; anahtar reddedilirse (401) istek anahtarsız yinelenir.
+// Anahtar önce Master Key, sonra Access Key olarak denenir; ikisi de reddedilirse (401) anahtarsız denenir (açık kutu bunu kabul ediyor).
 async function jb(path, opt = {}) {
-  const key = localStorage.diyetKey, go = k => fetch(API + path, {...opt, headers: {...opt.headers, ...(k && {'X-Master-Key': k})}});
-  let r = await go(key); if (r.status === 401 && key) r = await go();
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || r.status);
+  const key = localStorage.diyetKey; let r;
+  for (const hd of key ? [{'X-Master-Key': key}, {'X-Access-Key': key}, {}] : [{}]) {
+    r = await fetch(API() + path, {...opt, headers: {...opt.headers, ...hd}}); if (r.status !== 401) break;
+  }
+  if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).message || r.status), {status: r.status});
   return (await r.json()).record;
 }
 async function push() {
   try {
-    merge(await jb('/latest'), true);
+    // JSONBin son sürümü okurken 500 verirse yine de yazılır: yeni sürüm okumayı düzeltir, yerel günler zaten korunur.
+    try { merge(await jb('/latest'), true); } catch (e) { if (e.status !== 500) throw e; }
     await jb('', {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(S)});
     localStorage.diyet = JSON.stringify(S); localStorage.removeItem('diyetDirty'); status('✓ Kaydedildi');
   } catch (e) { status('Kaydedilemedi (' + (e.message || e) + ')'); }
@@ -251,7 +255,7 @@ async function load() {
     status('✓ Eşitlendi');
     render();
     if (localStorage.diyetDirty) push();
-  } catch (e) { status('Çevrimdışı (' + (e.message || e) + ')'); }
+  } catch (e) { status('Okunamadı (' + (e.message || e) + ')'); if (localStorage.diyetDirty) push(); }
 }
 
 function h(tag, props, ...kids) {
@@ -282,8 +286,9 @@ function hero() {
 // type=number bazı tarayıcılarda virgülü reddediyor; metin kutusu hem virgülü hem noktayı kabul eder.
 const num = (label, field) => h('label', {}, h('input', {
   type: 'text', inputMode: 'decimal', placeholder: '–', value: String(D()[field] ?? '').replace('.', ','),
-  // odak kaybolmasın diye burada sayfa yeniden çizilmiyor
-  onchange: e => { const v = sayi(e.target.value); set(d => v == null ? delete d[field] : d[field] = v); e.target.value = v == null ? '' : String(v).replace('.', ','); renderHead(); }}), label);
+  // iOS'ta başka bir düğmeye dokunmak kutudan odağı almaz, change hiç gelmeyebilir; bu yüzden her tuşta kaydedilir
+  oninput: e => { const v = sayi(e.target.value); set(d => v == null ? delete d[field] : d[field] = v); renderHead(); },
+  onchange: e => { const v = sayi(e.target.value); e.target.value = v == null ? '' : String(v).replace('.', ','); }}), label);
 const olcum = () => h('section', {}, h('h2', {}, 'Ölçümler'), h('div', {className: 'tiles'},
   num('Sabah kilosu (kg)', 'kg'), num('Adım', 'adim'), num('Bel (cm)', 'bel')));
 
@@ -456,12 +461,28 @@ function reportSection() {
 
 /* ---------- Ayarlar ---------- */
 function keySection() {
-  const key = h('input', {className: 'field', type: 'password', placeholder: 'X-Master-Key', ariaLabel: 'JSONBin anahtarı', autocomplete: 'off', value: localStorage.diyetKey || '', style: 'flex:1'});
+  const key = h('input', {className: 'field', type: 'password', placeholder: 'X-Master-Key', ariaLabel: 'JSONBin anahtarı', autocomplete: 'off', value: localStorage.diyetKey || '', style: 'flex:1 1 100%'});
+  const bin = h('input', {className: 'field', placeholder: 'Kutu kimliği: ' + BIN, ariaLabel: 'JSONBin kutu kimliği', autocomplete: 'off', autocapitalize: 'off', spellcheck: false, value: localStorage.diyetBin || '', style: 'flex:1 1 100%'});
   return h('section', {}, h('h2', {}, 'Eşitleme'),
-    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar JSONBin kutusunda tutulur ve anahtar olmadan da kaydedilir. Anahtar girersen önce onunla denenir; yalnızca bu cihazın tarayıcısında saklanır.'),
-    h('div', {className: 'row'}, key, h('button', {className: 'btn pri', onclick: () => {
-      key.value.trim() ? localStorage.diyetKey = key.value.trim() : localStorage.removeItem('diyetKey'); localStorage.diyetDirty = '1'; load();
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar JSONBin kutusunda tutulur. Anahtar (Master Key ya da Access Key) girersen önce onunla denenir. Başka bir kutu kullanmak için kimliğini yaz; boş bırakırsan varsayılan kutu kullanılır. İkisi de yalnızca bu cihazda saklanır.'),
+    h('div', {className: 'row'}, key, bin, h('button', {className: 'btn pri', onclick: () => {
+      key.value.trim() ? localStorage.diyetKey = key.value.trim() : localStorage.removeItem('diyetKey');
+      bin.value.trim() ? localStorage.diyetBin = bin.value.trim() : localStorage.removeItem('diyetBin'); localStorage.diyetDirty = '1'; load();
     }}, 'Kaydet')));
+}
+function yedekSection() {
+  const ta = h('textarea', {className: 'field', rows: 3, placeholder: 'Yedeği buraya yapıştır', ariaLabel: 'Yedek'}), ok = h('p', {className: 'mut', role: 'status'});
+  return h('section', {}, h('h2', {}, 'Yedek'),
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Kayıtlar bu cihazın tarayıcısında durur. Ana ekrandaki kısayolu silmek ya da site verilerini temizlemek onları da siler; önce yedeği kopyalayıp Notlar’a yapıştır.'),
+    ta, h('div', {className: 'row', style: 'margin-top:8px'},
+      h('button', {className: 'btn pri', onclick: async () => {
+        ta.value = JSON.stringify(S); ta.select();
+        try { await navigator.clipboard.writeText(ta.value); ok.textContent = '✓ Yedek kopyalandı'; } catch { ok.textContent = 'Kutudaki metni elle kopyala.'; }
+      }}, 'Yedeği kopyala'),
+      h('button', {className: 'btn', onclick: () => {
+        try { const r = JSON.parse(ta.value); if (!r.days) throw 0; merge(r, false); save(); ok.textContent = '✓ Yedek yüklendi'; }
+        catch { ok.textContent = 'Bu metin geçerli bir yedek değil.'; }
+      }}, 'Yedekten yükle')), ok);
 }
 function gemSection() {
   const key = h('input', {className: 'field', type: 'password', placeholder: 'Gemini API anahtarı', ariaLabel: 'Gemini API anahtarı', autocomplete: 'off', value: localStorage.diyetGem || '', style: 'flex:1'});
@@ -503,7 +524,7 @@ const VIEWS = {
   bugun: () => [hero(), olcum(), extraSection()],
   spor: () => [sporToday(), sporPlan()],
   gidisat: () => [tiles(), chartSection(), weekStats(), reportSection()],
-  ayar: () => [keySection(), gemSection(), hedefSection()]
+  ayar: () => [keySection(), yedekSection(), gemSection(), hedefSection()]
 };
 const BUILD = {ozet: hero, ekstra: extraSection, sporBugun: sporToday, sporPlan};
 const re = id => $(id)?.replaceWith(BUILD[id]());
