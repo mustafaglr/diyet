@@ -382,10 +382,12 @@ function sporPlan() {
 /* ---------- Gidişat ---------- */
 function tiles() {
   const a = avg7(S.days, TODAY), diff = a == null ? null : a - planKg(TODAY);
+  // Öne çıkan değer son tartıdır; 7 günlük ortalama günlük su oynamalarını süzmek için yanında durur.
+  const sonT = Object.keys(S.days).filter(t => S.days[t].kg).sort().at(-1), son = sonT && +S.days[sonT].kg;
   return h('section', {}, h('h2', {}, 'Kilo', h('small', {}, `hedef ${fmt(C.goalKg, 0)} kg`)), h('div', {className: 'tiles two'},
-    tile('Güncel, 7 gün ortalaması', a == null ? '–' : fmt(a) + ' kg', `başlangıç ${fmt(C.startKg, 2)} kg`),
-    tile('Verilen', a == null ? '–' : fmt(C.startKg - a) + ' kg', a == null ? 'kilo girince hesaplanır' : `kalan ${fmt(Math.max(0, a - C.goalKg))} kg`),
-    tile('Plana göre', diff == null ? '–' : fmt(Math.abs(diff)) + ' kg', diff == null ? '' : diff <= 0.05 ? '▼ planın önünde' : '▲ planın gerisinde', diff == null ? '' : diff <= 0.05 ? 'good' : 'bad'),
+    tile('Son tartı', son ? fmt(son, 2) + ' kg' : '–', son ? dateOf(sonT).toLocaleDateString(TR, {day: 'numeric', month: 'long'}) + (a == null ? '' : `, 7 gün ort. ${fmt(a)}`) : 'Bugün sekmesinden kilonu gir'),
+    tile('Verilen', son ? fmt(C.startKg - son, 2) + ' kg' : '–', son ? `başlangıç ${fmt(C.startKg)}, kalan ${fmt(Math.max(0, son - C.goalKg))} kg` : 'kilo girince hesaplanır'),
+    tile('Plana göre, 7 gün ort.', diff == null ? '–' : fmt(Math.abs(diff)) + ' kg', diff == null ? '' : diff <= 0.05 ? '▼ planın önünde' : '▲ planın gerisinde', diff == null ? '' : diff <= 0.05 ? 'good' : 'bad'),
     tile('Bugün olması gereken', fmt(planKg(TODAY)) + ' kg', `haftada yaklaşık ${fmt((C.startKg - C.goalKg) / ((T1() - T0()) / 6048e5))} kg`)));
 }
 function chartSection() {
@@ -405,10 +407,10 @@ function chartSection() {
     <line x1="${x(C.start)}" y1="${y(C.startKg)}" x2="${x(C.goal)}" y2="${y(C.goalKg)}" stroke="var(--axis)" stroke-width="2" stroke-linecap="round"/>
     <text x="${x(C.goal) + 8}" y="${y(C.goalKg) + 4}">${C.goalKg} kg</text>
     <line id="cross" y1="${T}" y2="${H - B}" stroke="var(--axis)" style="display:none"/>
-    ${pts.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3" fill="var(--mut)" opacity=".55"/>`).join('')}
+    ${pts.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3.5" fill="var(--ink2)"/>`).join('')}
     <polyline points="${pts.map(p => x(p[0]).toFixed(1) + ',' + y(p[2]).toFixed(1)).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     ${last ? `<circle cx="${x(last[0])}" cy="${y(last[2])}" r="5" fill="var(--acc)" stroke="var(--surface)" stroke-width="2"/>
-      <text x="${x(last[0]) + 9}" y="${y(last[2]) - 8}" fill="var(--ink)" font-size="12" font-weight="600">${fmt(last[2])}</text>` : ''}</svg>`;
+      <text x="${x(last[0]) + 9}" y="${y(last[1]) - 8}" fill="var(--ink)" font-size="12" font-weight="600">${fmt(last[1], 2)}</text>` : ''}</svg>`;
   const wrap = h('div', {className: 'chart', innerHTML: svg}), tip = h('div', {className: 'tip', hidden: true}), cross = wrap.querySelector('#cross');
   wrap.append(tip);
   const move = e => {
@@ -425,7 +427,7 @@ function chartSection() {
   wrap.onpointerleave = () => { tip.hidden = true; cross.style.display = 'none'; };
   return h('section', {}, h('h2', {}, 'Grafik'),
     h('div', {className: 'legend', innerHTML: `<span><i style="width:16px;height:2px;background:var(--acc)"></i>7 günlük ortalama</span>
-      <span><i style="width:6px;height:6px;border-radius:50%;background:var(--mut);opacity:.55"></i>Günlük tartı</span>
+      <span><i style="width:7px;height:7px;border-radius:50%;background:var(--ink2)"></i>Günlük tartı</span>
       <span><i style="width:16px;height:2px;background:var(--axis)"></i>Hedef planı</span>`}),
     wrap, pts.length ? null : h('p', {className: 'mut'}, 'Henüz kilo girişi yok. Bugün sekmesinden sabah kilonu gir.'),
     h('details', {style: 'margin-top:12px;padding-bottom:0'}, h('summary', {}, 'Tablo olarak göster'),
