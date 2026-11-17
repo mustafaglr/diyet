@@ -301,21 +301,55 @@ async function kucult(file) {
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', .8).split(',')[1];
 }
+// Yanıt biçimi API'ye göre değişir (generateContent: candidates..parts[].text, interactions: output_text ya da adımlar);
+// bu yüzden yanıttaki tüm metin alanları taranır ve içinde kcal olan ilk JSON alınır.
 const gemParse = j => {
-  const o = JSON.parse((j.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join(''));
-  return {ad: String(o.ad), kcal: Math.round(sayi(o.kcal)), p: Math.round(sayi(o.p) || 0)};
+  const xs = [];
+  (function walk(o) { if (!o || typeof o !== 'object' || o.thought) return; for (const [k, v] of Object.entries(o)) typeof v === 'string' ? /text/i.test(k) && xs.push(v) : walk(v); })(j);
+  for (const t of [...xs, xs.join('')]) {
+    try { const o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); if (o.kcal != null) return {ad: String(o.ad), kcal: Math.round(sayi(o.kcal)), p: Math.round(sayi(o.p) || 0)}; } catch {}
+  }
+  throw new Error('yanıt çözülemedi');
 };
 console.assert(JSON.stringify(gemParse({candidates: [{content: {parts: [{thought: true, text: 'x'}, {text: '{"ad":"Mercimek çorbası, 1 kase","kcal":180.4,"p":"9"}'}]}}]})) === '{"ad":"Mercimek çorbası, 1 kase","kcal":180,"p":9}', 'gemParse');
-async function gemini(text, file) {
-  const parts = [{text: 'Diyetisyen gibi davran. Kullanıcının yediği şeyin TOPLAM kalorisini (kcal) ve proteinini (gram) tahmin et. Porsiyon belirtilmediyse fotoğraftan ya da standart Türk porsiyonundan tahmin et; emin değilsen biraz yüksek tarafı seç. "ad": kısa Türkçe ad ve porsiyon (örnek: "İskender, 1 porsiyon"). Yiyecek yoksa kcal 0 ver.\n\nKullanıcı: ' + (text || '(fotoğrafa bak)')}];
-  if (file) parts.push({inline_data: {mime_type: 'image/jpeg', data: await kucult(file)}});
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(localStorage.diyetGemModel || GEM_MODEL)}:generateContent`, {
-    method: 'POST', headers: {'x-goog-api-key': localStorage.diyetGem, 'Content-Type': 'application/json'},
-    body: JSON.stringify({contents: [{parts}], generationConfig: {responseMimeType: 'application/json',
-      responseSchema: {type: 'OBJECT', properties: {ad: {type: 'STRING'}, kcal: {type: 'INTEGER'}, p: {type: 'INTEGER'}}, required: ['ad', 'kcal', 'p']}}})});
+const gemFetch = async (path, body, extra) => {
+  const r = await fetch('https://generativelanguage.googleapis.com/' + path, {method: body ? 'POST' : 'GET',
+    headers: {'x-goog-api-key': localStorage.diyetGem, ...(body && {'Content-Type': 'application/json'}), ...extra}, body: body && JSON.stringify(body)});
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error?.message || r.status);
-  return gemParse(j);
+  if (!r.ok) throw Object.assign(new Error(j.error?.message || r.status), {status: r.status});
+  return j;
+};
+// Model adına göre gürültü ayıklanır; hangi API'nin çalıştığı çağrı sırasında denenerek bulunur.
+async function gemModeller() {
+  const out = []; let err;
+  for (const ver of ['v1beta', 'v1alpha', 'v1']) {
+    try {
+      for (const m of (await gemFetch(ver + '/models?pageSize=1000')).models || []) {
+        const id = String(m.name).replace('models/', '');
+        if (/gemini|gemma/.test(id) && !/embed|tts|audio|image|live|robotics|computer/.test(id) && !out.some(x => x.id === id)) out.push({id, ver, ad: m.displayName || id});
+      }
+    } catch (e) { err ||= e; }
+  }
+  if (!out.length) throw err || new Error('model bulunamadı');
+  return out;
+}
+// Modeller aynı API'yi desteklemiyor: sırayla şemalı generateContent, şemasız generateContent ve Interactions API denenir.
+async function gemini(text, file) {
+  const soru = 'Diyetisyen gibi davran. Kullanıcının yediği şeyin TOPLAM kalorisini (kcal) ve proteinini (gram) tahmin et. Porsiyon belirtilmediyse fotoğraftan ya da standart Türk porsiyonundan tahmin et; emin değilsen biraz yüksek tarafı seç. Yiyecek yoksa kcal 0 ver. Yalnızca şu biçimde JSON döndür: {"ad": "kısa Türkçe ad ve porsiyon, örnek: İskender, 1 porsiyon", "kcal": tam sayı, "p": tam sayı}\n\nKullanıcı: ' + (text || '(fotoğrafa bak)');
+  const img = file && await kucult(file), m = encodeURIComponent(localStorage.diyetGemModel || GEM_MODEL), ver = localStorage.diyetGemVer || 'v1beta';
+  const sema = up => { const T = x => up ? x.toUpperCase() : x; return {type: T('object'), properties: {ad: {type: T('string')}, kcal: {type: T('integer')}, p: {type: T('integer')}}, required: ['ad', 'kcal', 'p']}; };
+  const gc = cfg => () => gemFetch(`${ver}/models/${m}:generateContent`, {contents: [{parts: [{text: soru}, ...(img ? [{inline_data: {mime_type: 'image/jpeg', data: img}}] : [])]}], ...cfg});
+  const yollar = [
+    ['generateContent', gc({generationConfig: {responseMimeType: 'application/json', responseSchema: sema(true)}})],
+    ['generateContent, şemasız', gc({})],
+    ['interactions', () => gemFetch('v1beta/interactions', {model: decodeURIComponent(m), input: [{type: 'text', text: soru}, ...(img ? [{type: 'image', data: img, mime_type: 'image/jpeg'}] : [])],
+      response_format: {type: 'text', mime_type: 'application/json', schema: sema(false)}}, {'Api-Revision': '2026-05-20'})]];
+  const hata = [];
+  for (const [ad, f] of yollar) {
+    try { return gemParse(await f()); }
+    catch (e) { hata.push(ad + ': ' + (e.message || e)); if ([401, 403, 429].includes(e.status) || /API key/i.test(e.message)) break; } // anahtar ya da kota hatasında diğer yolları denemek anlamsız
+  }
+  throw new Error(hata.join(' | '));
 }
 
 function extraSection() {
@@ -488,16 +522,29 @@ function yedekSection() {
       }}, 'Yedekten yükle')), ok);
 }
 function gemSection() {
-  const key = h('input', {className: 'field', type: 'password', placeholder: 'Gemini API anahtarı', ariaLabel: 'Gemini API anahtarı', autocomplete: 'off', value: localStorage.diyetGem || '', style: 'flex:1'});
-  const model = h('input', {className: 'field', placeholder: 'Model: ' + GEM_MODEL, ariaLabel: 'Gemini modeli', autocomplete: 'off', autocapitalize: 'off', spellcheck: false, value: localStorage.diyetGemModel || '', style: 'flex:1 1 100%'});
-  const ok = h('p', {className: 'mut', role: 'status', style: 'margin:8px 0 0'});
+  const key = h('input', {className: 'field', type: 'password', placeholder: 'Gemini API anahtarı', ariaLabel: 'Gemini API anahtarı', autocomplete: 'off', value: localStorage.diyetGem || '', style: 'flex:1 1 100%'});
+  const model = h('select', {className: 'field', ariaLabel: 'Gemini modeli', style: 'flex:1;min-width:0'}), ok = h('p', {className: 'mut', role: 'status', style: 'margin:8px 0 0'});
+  const kaydetKey = () => key.value.trim() ? localStorage.diyetGem = key.value.trim() : localStorage.removeItem('diyetGem');
+  const doldur = () => {
+    let L = []; try { L = JSON.parse(localStorage.diyetGemList) || []; } catch {}
+    const cur = localStorage.diyetGemModel || GEM_MODEL;
+    if (!L.some(m => m.id === cur)) L.unshift({id: cur, ver: localStorage.diyetGemVer || 'v1beta', ad: cur});
+    model.replaceChildren(...L.map(m => Object.assign(h('option', {value: m.id, selected: m.id === cur}, `${m.ad} (${m.id}, ${m.ver})`), {ver: m.ver})));
+  };
+  doldur();
   return h('section', {}, h('h2', {}, 'Gemini ile kalori tahmini'),
-    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Anahtarı aistudio.google.com adresinden ücretsiz alabilirsin. Yalnızca bu cihazın tarayıcısında saklanır. Yazdığın metin ve seçtiğin fotoğraf Google’a gönderilir.'),
-    h('div', {className: 'row'}, key, model, h('button', {className: 'btn pri', onclick: () => {
-      key.value.trim() ? localStorage.diyetGem = key.value.trim() : localStorage.removeItem('diyetGem');
-      model.value.trim() ? localStorage.diyetGemModel = model.value.trim() : localStorage.removeItem('diyetGemModel');
-      ok.textContent = (key.value.trim() ? '✓ Kaydedildi' : 'Anahtar silindi') + ', model: ' + (localStorage.diyetGemModel || GEM_MODEL);
-    }}, 'Kaydet')), ok);
+    h('p', {className: 'mut', style: 'margin:0 0 12px'}, 'Anahtarı aistudio.google.com adresinden ücretsiz alabilirsin. Anahtarı yaz, "Modelleri getir" ile anahtarının kullanabildiği modelleri listele, birini seçip kaydet. Anahtar yalnızca bu cihazda saklanır. Yazdığın metin ve seçtiğin fotoğraf Google’a gönderilir.'),
+    h('div', {className: 'row'}, key, model,
+      h('button', {className: 'btn', onclick: async () => {
+        kaydetKey(); if (!localStorage.diyetGem) return ok.textContent = 'Önce anahtarı yaz.';
+        ok.textContent = 'Modeller getiriliyor…';
+        try { const L = await gemModeller(); localStorage.diyetGemList = JSON.stringify(L); doldur(); ok.textContent = L.length + ' model bulundu. Birini seçip "Kaydet"e bas.'; }
+        catch (e) { ok.textContent = 'Modeller alınamadı: ' + (e.message || e); }
+      }}, 'Modelleri getir'),
+      h('button', {className: 'btn pri', onclick: () => {
+        kaydetKey(); localStorage.diyetGemModel = model.value; localStorage.diyetGemVer = model.selectedOptions[0]?.ver || 'v1beta';
+        ok.textContent = (localStorage.diyetGem ? '✓ Kaydedildi' : 'Anahtar silindi') + ', model: ' + model.value;
+      }}, 'Kaydet')), ok);
 }
 function hedefSection() {
   const F = [['kcal', 'Günlük kalori (kcal)'], ['p', 'Günlük protein (g)'], ['su', 'Günlük su (ml)'], ['adim', 'Günlük adım'], ['startKg', 'Başlangıç kilosu (kg)'], ['start', 'Başlangıç tarihi', 'date'],
